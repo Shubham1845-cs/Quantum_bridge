@@ -1,0 +1,13 @@
+{
+  "name": "@quantumbridge/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "types/index.ts",
+  "scripts": {
+    "build": "tsc --project tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
