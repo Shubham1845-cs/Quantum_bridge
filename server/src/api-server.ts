@@ -5,6 +5,8 @@ import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
 import { globalLimiter, healthLimiter } from './middleware/rateLimiter.js';
 import { authRouter } from './modules/auth/authRouter.js';
+import { orgRouter } from './modules/organization/orgRouter.js';
+import { endpointRouter } from './modules/endpoint/endpointRouter.js';
 
 const app = express();
 
@@ -47,7 +49,11 @@ app.get('/health', healthLimiter, (_req, res) => {
 // Auth routes — Req 1.1, 2.1, 17.4
 app.use('/auth', authRouter);
 
-// Additional routes wired in subsequent tasks (2.9, 3.5, etc.)
+// Org CRUD + member management + key routes — Req 3.1, 4.6, 4.8
+app.use('/orgs', orgRouter);
+
+// Endpoint routes — Req 5.1, 5.2, 5.7
+app.use('/orgs/:orgId/endpoints', endpointRouter);
 
 export { app };
 export default app;
