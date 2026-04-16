@@ -1,9 +1,10 @@
-import { randomUUID, createDecipheriv } from 'node:crypto';
+import { randomUUID, createDecipheriv, createCipheriv, randomBytes } from 'node:crypto';
 import express from 'express';
 import cors from 'cors';
+import mongoose from 'mongoose';
 import { Types } from 'mongoose';
 import { env } from './config/env.js';
-import { healthLimiter } from './middleware/rateLimiter.js';
+import { healthLimiter, checkSigningRateLimit } from './middleware/rateLimiter.js';
 import { getEndpoint } from './modules/proxy/endpointCache.js';
 import { ProxyLog } from './modules/proxy/ProxyLog.js';
 import { verifyApiKey } from './modules/endpoint/apiKey.js';
@@ -11,6 +12,7 @@ import { keyVaultService, type DualSignature } from './modules/keyVault/keyVault
 import { redis, duplicate } from './config/redis.js';
 import logger from './utils/logger.js';
 import { connectWithRetry } from './config/database.js';
+import { setupGracefulShutdown } from './utils/gracefulShutdown.js';
 
 const app = express();
 
@@ -21,9 +23,24 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Health endpoint with dedicated rate limiter (Req 17.5)
-app.get('/health', healthLimiter, (_req, res) => {
-  res.json({ status: 'ok' });
+// Health endpoint with dedicated rate limiter (Req 17.5, 17.6)
+app.get('/health', healthLimiter, async (_req, res) => {
+  const dbOk = mongoose.connection.readyState === 1;
+
+  let redisOk = false;
+  try {
+    await redis.ping();
+    redisOk = true;
+  } catch {
+    redisOk = false;
+  }
+
+  const healthy = dbOk && redisOk;
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'ok' : 'degraded',
+    db: dbOk ? 'connected' : 'disconnected',
+    redis: redisOk ? 'connected' : 'disconnected',
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -71,6 +88,24 @@ async function decryptRequestBody(
   const decipher = createDecipheriv('aes-256-gcm', sessionKey, iv);
   decipher.setAuthTag(authTag);
   return Buffer.concat([decipher.update(data), decipher.final()]);
+}
+
+// ---------------------------------------------------------------------------
+// AES-256-GCM response body encryption (Step 9)
+// Returns base64-encoded ciphertext (encrypted_data || 16-byte auth tag)
+// and the base64-encoded 12-byte IV, both sent as response headers.
+// ---------------------------------------------------------------------------
+
+function encryptResponseBody(
+  plaintext: Buffer,
+  sessionKey: Buffer,
+): { ciphertextBase64: string; ivBase64: string } {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', sessionKey, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  const ciphertextBase64 = Buffer.concat([encrypted, authTag]).toString('base64');
+  return { ciphertextBase64, ivBase64: iv.toString('base64') };
 }
 
 
@@ -229,6 +264,13 @@ async function proxyHandler(req: express.Request, res: express.Response): Promis
         return;
       }
 
+      // Req 10.5 — per-org signing rate limit: 5 ops/min
+      if (!checkSigningRateLimit(orgId)) {
+        statusCode = 429;
+        res.status(429).json({ error: 'Signing rate limit exceeded. Try again in 1 minute.' });
+        return;
+      }
+
       const sigKeyVersion = parseInt(keyVersionHeader, 10);
       if (isNaN(sigKeyVersion)) {
         threatFlag = true;
@@ -296,12 +338,53 @@ async function proxyHandler(req: express.Request, res: express.Response): Promis
 
       statusCode = legacyResponse.status;
 
-      // Step 9 — Return response (Req 6.9)
+      // Step 9 — Encrypt + dual-sign response (Req 6.10, 6.11, 6.12)
       const contentType = legacyResponse.headers.get('content-type');
-      if (contentType) res.setHeader('content-type', contentType);
+      const rawBody = await legacyResponse.text();
+      const responsePayload = Buffer.from(rawBody, 'utf8');
 
-      const body = await legacyResponse.text();
-      res.status(statusCode).send(body);
+      try {
+        // Derive session key for AES-256-GCM encryption (Req 6.10)
+        const { deriveKey } = await import('./modules/keyVault/keyVaultService.js');
+        const { KeyVault } = await import('./modules/keyVault/KeyVault.js');
+        const vault = await KeyVault.findOne({ orgId, isActive: true });
+
+        if (vault) {
+          const sessionKey = await deriveKey(orgId, vault.salt);
+          const { ciphertextBase64, ivBase64 } = encryptResponseBody(responsePayload, sessionKey);
+          sessionKey.fill(0);
+
+          // Dual-sign the encrypted response payload (Req 6.11)
+          // Req 10.5 — per-org signing rate limit: 5 ops/min
+          if (!checkSigningRateLimit(orgId)) {
+            statusCode = 429;
+            res.status(429).json({ error: 'Signing rate limit exceeded. Try again in 1 minute.' });
+            return;
+          }
+          const sig = await keyVaultService.sign(orgId, Buffer.from(ciphertextBase64), requestId);
+          keyVersion = sig.keyVersion;
+
+          // Attach QB signature headers (Req 6.12)
+          res.setHeader('X-QB-ECDSA-Sig', sig.ecdsaSignature);
+          res.setHeader('X-QB-Dilithium-Sig', sig.dilithiumSignature);
+          res.setHeader('X-QB-Key-Version', String(sig.keyVersion));
+          res.setHeader('X-QB-IV', ivBase64);
+          res.setHeader('QB-Encrypted', '1');
+          if (contentType) res.setHeader('content-type', 'application/octet-stream');
+
+          res.status(statusCode).send(ciphertextBase64);
+        } else {
+          // No active vault — fall back to plain passthrough (should not happen in production)
+          logger.warn('no_active_vault_for_response_encryption', { orgId, requestId });
+          if (contentType) res.setHeader('content-type', contentType);
+          res.status(statusCode).send(rawBody);
+        }
+      } catch (encErr) {
+        logger.error('response_encryption_failed', { requestId, orgId, err: encErr });
+        // Fall back to unencrypted response rather than returning 500 to the client
+        if (contentType) res.setHeader('content-type', contentType);
+        res.status(statusCode).send(rawBody);
+      }
     } catch (err: unknown) {
       clearTimeout(timeoutId);
       const isAbort = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError');
@@ -368,9 +451,10 @@ async function initCacheInvalidationSubscriber(): Promise<void> {
 async function start(): Promise<void> {
   await connectWithRetry();
   await initCacheInvalidationSubscriber();
-  app.listen(env.PROXY_PORT, () => {
+  const server = app.listen(env.PROXY_PORT, () => {
     logger.info(`Proxy_Engine listening on port ${env.PROXY_PORT}`);
   });
+  setupGracefulShutdown(server, 'Proxy_Engine');
 }
 
 start().catch((err) => {

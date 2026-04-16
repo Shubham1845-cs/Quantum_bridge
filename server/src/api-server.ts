@@ -2,11 +2,18 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import mongoose from 'mongoose';
 import { env } from './config/env.js';
 import { globalLimiter, healthLimiter } from './middleware/rateLimiter.js';
+import { redis } from './config/redis.js';
 import { authRouter } from './modules/auth/authRouter.js';
 import { orgRouter } from './modules/organization/orgRouter.js';
 import { endpointRouter } from './modules/endpoint/endpointRouter.js';
+import { analyticsRouter } from './modules/analytics/analyticsRouter.js';
+import { setupGracefulShutdown } from './utils/gracefulShutdown.js';
+import { connectWithRetry } from './config/database.js';
+import { keyVaultService } from './modules/keyVault/keyVaultService.js';
+import logger from './utils/logger.js';
 
 const app = express();
 
@@ -41,9 +48,24 @@ app.use(cookieParser());
 // Req 10.4 — Global rate limit: 100 req / 15 min per IP on all management endpoints
 app.use(globalLimiter);
 
-// Req 17.4 — Health endpoint with dedicated rate limiter (60 req/min per IP)
-app.get('/health', healthLimiter, (_req, res) => {
-  res.json({ status: 'ok' });
+// Req 17.4, 17.6 — Health endpoint: check DB + Redis connectivity; 503 on failure
+app.get('/health', healthLimiter, async (_req, res) => {
+  const dbOk = mongoose.connection.readyState === 1; // 1 = connected
+
+  let redisOk = false;
+  try {
+    await redis.ping();
+    redisOk = true;
+  } catch {
+    redisOk = false;
+  }
+
+  const healthy = dbOk && redisOk;
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'ok' : 'degraded',
+    db: dbOk ? 'connected' : 'disconnected',
+    redis: redisOk ? 'connected' : 'disconnected',
+  });
 });
 
 // Auth routes — Req 1.1, 2.1, 17.4
@@ -55,5 +77,29 @@ app.use('/orgs', orgRouter);
 // Endpoint routes — Req 5.1, 5.2, 5.7
 app.use('/orgs/:orgId/endpoints', endpointRouter);
 
+// Analytics — ProxyLog queries, export, summary, timeseries (Req 7.1, 7.2, 7.4, 7.6)
+app.use('/orgs/:orgId/logs', analyticsRouter);
+app.use('/orgs/:orgId/analytics', analyticsRouter);
+
 export { app };
 export default app;
+
+// ---------------------------------------------------------------------------
+// Server startup (only when run directly, not during tests)
+// ---------------------------------------------------------------------------
+
+if (process.env.NODE_ENV !== 'test') {
+  async function start(): Promise<void> {
+    await connectWithRetry();
+    keyVaultService.runRotationScheduler();
+    const server = app.listen(env.PORT, () => {
+      logger.info(`API_Server listening on port ${env.PORT}`);
+    });
+    setupGracefulShutdown(server, 'API_Server');
+  }
+
+  start().catch((err) => {
+    logger.error('API_Server failed to start', { err });
+    process.exit(1);
+  });
+}
