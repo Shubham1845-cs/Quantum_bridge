@@ -13,6 +13,8 @@ import { redis, duplicate } from './config/redis.js';
 import logger from './utils/logger.js';
 import { connectWithRetry } from './config/database.js';
 import { setupGracefulShutdown } from './utils/gracefulShutdown.js';
+import { atomicQuotaCheckAndIncrement, QuotaExceededError } from './modules/billing/quotaService.js';
+import { deliver as deliverWebhook } from './modules/webhook/webhookService.js';
 
 const app = express();
 
@@ -315,6 +317,18 @@ async function proxyHandler(req: express.Request, res: express.Response): Promis
     // Step 7 — Strip QB headers (Req 6.8)
     const forwardHeaders = stripQBHeaders(req.headers as Record<string, string | string[] | undefined>);
 
+    // Quota check — atomic increment before forwarding (Req 8.3)
+    try {
+      await atomicQuotaCheckAndIncrement(orgId);
+    } catch (err) {
+      if (err instanceof QuotaExceededError) {
+        statusCode = 429;
+        res.status(429).json({ error: err.message });
+        return;
+      }
+      throw err;
+    }
+
     // Step 8 — Forward to legacy API (Req 6.9, 6.14, 6.15)
     const targetUrl = buildTargetUrl(endpoint.targetUrl, req);
     const controller = new AbortController();
@@ -415,6 +429,26 @@ async function proxyHandler(req: express.Request, res: express.Response): Promis
         forwardedToLegacy,
         clientIp,
       });
+
+      // Req 7.3, 9.2 — fire webhook delivery async on threat events (within 30s)
+      // Fire-and-forget: never block the proxy response
+      if (threatFlag) {
+        const threatType = !ecdsaVerified || !dilithiumVerified
+          ? 'signature_failure' as const
+          : 'invalid_api_key' as const;
+
+        deliverWebhook(orgId, {
+          orgId,
+          endpointId,
+          requestId,
+          timestamp: new Date(),
+          threatType,
+          ecdsaVerified,
+          dilithiumVerified,
+        }).catch((err) =>
+          logger.error('webhook_delivery_trigger_failed', { requestId, orgId, err })
+        );
+      }
     }
   }
 }
