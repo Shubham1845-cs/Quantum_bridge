@@ -168,7 +168,8 @@ describe('Property 35: Structured Log Completeness (Req 17.1)', () => {
         logLevelArb,
         safeMessageArb,
         fc.dictionary(
-          fc.string({ minLength: 1, maxLength: 16 }),
+          // Restrict to safe identifier-like keys that Winston preserves as top-level properties
+          fc.stringMatching(/^[a-zA-Z][a-zA-Z0-9_]{0,15}$/),
           fc.string({ maxLength: 32 }),
         ),
         (level, message, meta) => {

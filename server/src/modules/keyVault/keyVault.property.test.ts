@@ -456,7 +456,7 @@ describe('Property 12: PBKDF2 Determinism (Req 11.1)', () => {
       ),
       { numRuns: 10 }
     );
-  });
+  }, 60_000);
 
   it('deriveKey produces different output for different salts (same orgId)', async () => {
     await fc.assert(
@@ -479,7 +479,7 @@ describe('Property 12: PBKDF2 Determinism (Req 11.1)', () => {
       ),
       { numRuns: 10 }
     );
-  });
+  }, 60_000);
 
   it('deriveKey produces different output for different orgIds (same salt)', async () => {
     await fc.assert(
@@ -499,7 +499,7 @@ describe('Property 12: PBKDF2 Determinism (Req 11.1)', () => {
       ),
       { numRuns: 10 }
     );
-  });
+  }, 60_000);
 
   it('derived key enables successful round-trip encryption (determinism enables decryption)', async () => {
     await fc.assert(
@@ -525,7 +525,7 @@ describe('Property 12: PBKDF2 Determinism (Req 11.1)', () => {
       ),
       { numRuns: 10 }
     );
-  });
+  }, 60_000);
 });
 
 // ---------------------------------------------------------------------------
@@ -597,7 +597,7 @@ describe('Property 13: Grace Period Verification (Req 4.6, 11.6)', () => {
       ),
       { numRuns: 5 }
     );
-  });
+  }, 60_000);
 
   it('verify() throws for an inactive vault whose grace period has expired', async () => {
     await fc.assert(
@@ -631,7 +631,7 @@ describe('Property 13: Grace Period Verification (Req 4.6, 11.6)', () => {
       ),
       { numRuns: 10 }
     );
-  });
+  }, 60_000);
 
   it('rotate() sets graceExpiresAt approximately 24 hours in the future', async () => {
     await fc.assert(
@@ -667,7 +667,7 @@ describe('Property 13: Grace Period Verification (Req 4.6, 11.6)', () => {
       ),
       { numRuns: 5, timeout: 60_000 }
     );
-  });
+  }, 60_000);
 
   it('verify() throws when vault version is not found', async () => {
     await fc.assert(

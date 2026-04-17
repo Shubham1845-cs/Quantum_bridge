@@ -10,6 +10,10 @@ import { authRouter } from './modules/auth/authRouter.js';
 import { orgRouter } from './modules/organization/orgRouter.js';
 import { endpointRouter } from './modules/endpoint/endpointRouter.js';
 import { analyticsRouter } from './modules/analytics/analyticsRouter.js';
+import { verifyRouter } from './modules/analytics/verifyRouter.js';
+import { billingRouter } from './modules/billing/billingRouter.js';
+import { handleWebhookEvent } from './modules/billing/webhookHandler.js';
+import { webhookRouter } from './modules/webhook/webhookRouter.js';
 import { setupGracefulShutdown } from './utils/gracefulShutdown.js';
 import { connectWithRetry } from './config/database.js';
 import { keyVaultService } from './modules/keyVault/keyVaultService.js';
@@ -36,6 +40,31 @@ app.use(
     },
     credentials: true,
   })
+);
+
+// ---------------------------------------------------------------------------
+// Req 8.5 — Stripe webhook: MUST use raw body parser so stripe.webhooks.constructEvent
+// can verify the HMAC signature. This route is registered BEFORE express.json so the
+// body is not pre-parsed as JSON.
+// ---------------------------------------------------------------------------
+app.post(
+  '/billing/webhook',
+  express.raw({ type: 'application/json' }),
+  async (req, res): Promise<void> => {
+    const sig = req.headers['stripe-signature'];
+    if (!sig || typeof sig !== 'string') {
+      res.status(400).json({ error: 'Missing Stripe-Signature header' });
+      return;
+    }
+    try {
+      await handleWebhookEvent(req.body as Buffer, sig);
+      res.status(200).json({ received: true });
+    } catch (err) {
+      const statusCode = (err as { statusCode?: number }).statusCode ?? 400;
+      const message    = err instanceof Error ? err.message : 'Webhook error';
+      res.status(statusCode).json({ error: message });
+    }
+  }
 );
 
 // Req 10.3 — Reject request bodies larger than 10KB with 413
@@ -80,6 +109,15 @@ app.use('/orgs/:orgId/endpoints', endpointRouter);
 // Analytics — ProxyLog queries, export, summary, timeseries (Req 7.1, 7.2, 7.4, 7.6)
 app.use('/orgs/:orgId/logs', analyticsRouter);
 app.use('/orgs/:orgId/analytics', analyticsRouter);
+
+// Public verification — unauthenticated, rate-limited 30/min (Req 18.1–18.7)
+app.use('/verify', verifyRouter);
+
+// Billing — Stripe Checkout + Customer Portal (Req 8.4, 8.8)
+app.use('/orgs/:orgId/billing', billingRouter);
+
+// Webhooks — registration, delivery log (Req 9.1, 9.5)
+app.use('/orgs/:orgId/webhooks', webhookRouter);
 
 export { app };
 export default app;
