@@ -1,0 +1,17 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm run build"
+
+[[services]]
+name = "api-server"
+startCommand = "node dist/api-server.js"
+
+[services.variables]
+PORT = "3000"
+
+[[services]]
+name = "proxy-engine"
+startCommand = "node dist/proxy-server.js"
+
+[services.variables]
+PROXY_PORT = "8080"

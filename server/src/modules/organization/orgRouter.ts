@@ -49,6 +49,51 @@ orgRouter.get(
   }
 );
 
+// DELETE /orgs/:orgId — cascade delete org and all associated data (owner only, Req 16.6)
+orgRouter.delete(
+  '/:orgId',
+  authenticate,
+  requireRole('owner'),
+  async (req: Request, res: Response): Promise<void> => {
+    const { orgId } = req.params;
+    try {
+      const [
+        { Organization }  ,
+        { OrgMember }     ,
+        { Endpoint }      ,
+        { KeyVault }      ,
+        { ProxyLog }      ,
+        { AuditLog }      ,
+        { WebhookConfig } ,
+      ] = await Promise.all([
+        import('./Organization.js'),
+        import('./OrgMember.js'),
+        import('../endpoint/Endpoint.js'),
+        import('../keyVault/KeyVault.js'),
+        import('../proxy/ProxyLog.js'),
+        import('../../utils/auditLog.js'),
+        import('../webhook/WebhookConfig.js'),
+      ]);
+
+      await Promise.all([
+        Endpoint.deleteMany({ orgId }),
+        KeyVault.deleteMany({ orgId }),
+        OrgMember.deleteMany({ orgId }),
+        ProxyLog.deleteMany({ orgId }),
+        AuditLog.deleteMany({ orgId }),
+        WebhookConfig.deleteMany({ orgId }),
+      ]);
+
+      await Organization.findByIdAndDelete(orgId);
+
+      res.status(204).send();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: msg });
+    }
+  }
+);
+
 // ---------------------------------------------------------------------------
 // Member management
 // ---------------------------------------------------------------------------
