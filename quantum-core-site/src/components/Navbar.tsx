@@ -43,14 +43,19 @@ export default function Navbar() {
 
         {/* Desktop Nav Links */}
         <div className="hidden md:flex items-center gap-8">
-          {["Technology", "Specifications", "Network", "Docs"].map((item) => (
+          {[
+            { label: "Features", href: "#features" },
+            { label: "Security", href: "#security" },
+            { label: "Pricing", href: "#pricing" },
+            { label: "How It Works", href: "#how-it-works" },
+          ].map((item) => (
             <a
-              key={item}
-              href={`#${item.toLowerCase()}`}
+              key={item.label}
+              href={item.href}
               className="text-white/40 hover:text-cyber-cyan text-xs font-medium transition-colors duration-300 tracking-[0.2em] uppercase"
-              id={`nav-link-${item.toLowerCase()}`}
+              id={`nav-link-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
             >
-              {item}
+              {item.label}
             </a>
           ))}
         </div>
@@ -150,18 +155,21 @@ export default function Navbar() {
             id="mobile-menu"
           >
             <div className="flex flex-col gap-4 pt-4">
-              {["Technology", "Specifications", "Network", "Docs"].map(
-                (item) => (
-                  <a
-                    key={item}
-                    href={`#${item.toLowerCase()}`}
-                    className="text-white/50 hover:text-cyber-cyan text-sm font-medium transition-colors tracking-[0.15em] uppercase px-2"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    {item}
-                  </a>
-                )
-              )}
+              {[
+                { label: "Features", href: "#features" },
+                { label: "Security", href: "#security" },
+                { label: "Pricing", href: "#pricing" },
+                { label: "How It Works", href: "#how-it-works" },
+              ].map((item) => (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  className="text-white/50 hover:text-cyber-cyan text-sm font-medium transition-colors tracking-[0.15em] uppercase px-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {item.label}
+                </a>
+              ))}
               <div className="border-t border-white/5 pt-4 mt-2 flex flex-col gap-3 px-2">
                 {isAuthenticated ? (
                   <Link
