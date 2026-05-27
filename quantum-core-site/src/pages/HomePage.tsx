@@ -1,69 +1,45 @@
-import { products } from "../data/products";
 import Navbar from "../components/Navbar";
-import HeroSection from "../components/HeroSection";
-import DetailsSection from "../components/DetailsSection";
-import CommerceSection from "../components/CommerceSection";
 import Footer from "../components/Footer";
+import GlobalAtmosphere from "../components/landing/GlobalAtmosphere";
+import LandingHero from "../components/landing/LandingHero";
+import QuantumDefenseConsole from "../components/landing/QuantumDefenseConsole";
+import RotaryTimeline from "../components/landing/RotaryTimeline";
+import QuantumPricing from "../components/landing/QuantumPricing";
 
 /**
- * The original marketing / landing page.
- * Extracted so App.tsx can focus on routing.
+ * New landing page with Lovable components.
+ * One continuous immersive quantum system with connected sections.
  */
 export default function HomePage() {
-  const product = products[0];
-
   return (
     <div className="min-h-screen relative text-white bg-black">
+      {/* Global quantum atmosphere - fixed background for entire page */}
+      <GlobalAtmosphere />
+
+      {/* Navbar - fixed at top */}
       <Navbar />
 
-      {/* Background Video fixed behind all content */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="fixed inset-0 w-full h-full object-cover z-0 opacity-40 pointer-events-none"
-      >
-        <source src="/videos/178908-860734672.mp4" type="video/mp4" />
-      </video>
-
+      {/* Main content - all sections flow continuously */}
       <main className="relative z-10">
-        {/* Ambient background glow */}
-        <div
-          className="fixed inset-0 pointer-events-none z-0 transition-all duration-1000 mix-blend-screen"
-          style={{
-            background: `radial-gradient(ellipse 80% 60% at 50% 0%, ${product.themeColor}15 0%, transparent 70%)`,
-          }}
-        />
+        {/* Hero Section */}
+        <LandingHero />
 
-        <HeroSection product={product} />
+        {/* Security Features Section */}
+        <section id="security" className="relative">
+          <QuantumDefenseConsole />
+        </section>
 
-        {/* Gradient Divider */}
-        <div
-          className="h-px w-full"
-          style={{
-            background: `linear-gradient(90deg, transparent, ${product.themeColor}30, transparent)`,
-          }}
-        />
+        {/* How It Works Section */}
+        <section id="how-it-works" className="relative">
+          <RotaryTimeline />
+        </section>
 
-        {/* Details & Tech Specs */}
-        <div className="relative z-10 bg-black/40 backdrop-blur-md">
-          <DetailsSection product={product} />
-        </div>
+        {/* Pricing Section */}
+        <section id="pricing" className="relative">
+          <QuantumPricing />
+        </section>
 
-        {/* Gradient Divider */}
-        <div
-          className="h-px w-full"
-          style={{
-            background: `linear-gradient(90deg, transparent, ${product.themeColor}20, transparent)`,
-          }}
-        />
-
-        {/* Commerce / Buy Now */}
-        <div className="relative z-10 bg-black/40 backdrop-blur-md">
-          <CommerceSection product={product} />
-        </div>
-
+        {/* Footer */}
         <Footer />
       </main>
     </div>
