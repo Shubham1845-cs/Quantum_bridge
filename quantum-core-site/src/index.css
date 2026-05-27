@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme {
+  /* Custom Colors */
+  --color-cyber-cyan: #00FFFF;
+  --color-neon-purple: #8A2BE2;
+  --color-deep-space: #05050a;
+  --color-void: #080810;
+
+  /* Custom Shadows */
+  --shadow-neon-cyan: 0 0 10px #00FFFF, 0 0 20px #00FFFF;
+  --shadow-neon-purple: 0 0 10px #8A2BE2, 0 0 20px #8A2BE2;
+  --shadow-neon-subtle: 0 0 5px rgba(0, 255, 255, 0.25), 0 0 15px rgba(0, 255, 255, 0.12);
+
+  /* Custom Font */
+  --font-space: 'Space Grotesk', sans-serif;
+}
+
+:root {
+  --font-space: 'Space Grotesk', sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-space), sans-serif;
+  background: #05050a;
+  color: white;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide scrollbar for seamless cinematic feel */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Selection — Cyan/Black */
+::selection {
+  background: #00FFFF;
+  color: #000000;
+}
+::-moz-selection {
+  background: #00FFFF;
+  color: #000000;
+}
+
+/* Utility classes */
+.font-space {
+  font-family: var(--font-space), sans-serif;
+}
+
+.text-gradient-cyan {
+  background: linear-gradient(135deg, #00FFFF 0%, #8A2BE2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow pulse animation */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Subtle floating animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Scanline effect overlay */
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+.animate-scanline {
+  animation: scanline 8s linear infinite;
+}
