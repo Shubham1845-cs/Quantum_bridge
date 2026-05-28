@@ -15,13 +15,17 @@ export default function HomePage() {
   return (
     <div className="min-h-screen relative text-white bg-black">
       {/* Seamless video background loop - deepest layer */}
-      <SeamlessVideoLoop
-        src="/videos/178908-860734672.mp4"
-        className="fixed inset-0 z-0 opacity-30"
-      />
+      <div className="fixed inset-0" style={{ zIndex: -2 }}>
+        <SeamlessVideoLoop
+          src="/videos/178908-860734672.mp4"
+          style={{ opacity: 0.4 }}
+        />
+      </div>
 
       {/* Global quantum atmosphere - layered above video */}
-      <GlobalAtmosphere />
+      <div className="fixed inset-0" style={{ zIndex: -1 }}>
+        <GlobalAtmosphere />
+      </div>
 
       {/* Navbar - fixed at top */}
       <Navbar />
