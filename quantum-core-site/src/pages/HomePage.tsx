@@ -1,6 +1,7 @@
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import GlobalAtmosphere from "../components/landing/GlobalAtmosphere";
+import SeamlessVideoLoop from "../components/landing/SeamlessVideoLoop";
 import LandingHero from "../components/landing/LandingHero";
 import QuantumDefenseConsole from "../components/landing/QuantumDefenseConsole";
 import RotaryTimeline from "../components/landing/RotaryTimeline";
@@ -13,7 +14,13 @@ import QuantumPricing from "../components/landing/QuantumPricing";
 export default function HomePage() {
   return (
     <div className="min-h-screen relative text-white bg-black">
-      {/* Global quantum atmosphere - fixed background for entire page */}
+      {/* Seamless video background loop - deepest layer */}
+      <SeamlessVideoLoop
+        src="/videos/178908-860734672.mp4"
+        className="fixed inset-0 z-0 opacity-30"
+      />
+
+      {/* Global quantum atmosphere - layered above video */}
       <GlobalAtmosphere />
 
       {/* Navbar - fixed at top */}
