@@ -9,7 +9,7 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const VerifyEmailPage = lazy(() => import('./pages/auth/VerifyEmailPage'));
-const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const ThreatAnalysisDashboard = lazy(() => import('./pages/ThreatAnalysisDashboard'));
 const OrgLayout = lazy(() => import('./components/OrgLayout'));
 const OrgOverviewPage = lazy(() => import('./pages/OrgOverviewPage'));
 const EndpointsPage = lazy(() => import('./pages/EndpointsPage'));
@@ -44,14 +44,20 @@ export default function App() {
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/verify/:requestId" element={<PublicVerifyPage />} />
 
-            {/* Protected routes */}
+            {/* Protected routes - Dashboard with nested routes */}
             <Route
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <OrgProvider>
-                    <DashboardPage />
-                  </OrgProvider>
+                  <ThreatAnalysisDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/:section"
+              element={
+                <ProtectedRoute>
+                  <ThreatAnalysisDashboard />
                 </ProtectedRoute>
               }
             />

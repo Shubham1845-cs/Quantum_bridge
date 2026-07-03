@@ -3,16 +3,22 @@ import { motion } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEndpoint, regenerateApiKey, deleteEndpoint } from "../api/endpoints";
+import { useToast } from "../hooks/useToast";
+import { copyToClipboard } from "../lib/utils";
 
 export default function EndpointDetailPage() {
   const { orgId, endpointId } = useParams<{ orgId: string; endpointId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
 
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [showKey, setShowKey] = useState(false);
   const [testMethod, setTestMethod] = useState("GET");
   const [testPath, setTestPath] = useState("");
   const [testBody, setTestBody] = useState("");
-  const [testResult, setTestResult] = useState<{ status: number; latency: number; sigs: number; data: any; ecdsa: boolean; pqc: boolean; version: number } | null>(null);
+  const [testResult, setTestResult] = useState<{ status: number; latency: number; data: any; ecdsaSig: string | null; dilithiumSig: string | null; keyVersion: number | null; encrypted: boolean } | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
   const [isTesting, setIsTesting] = useState(false);
 
   const { data: endpoint, isLoading } = useQuery({
@@ -24,9 +30,20 @@ export default function EndpointDetailPage() {
   const regenMut = useMutation({
     mutationFn: () => regenerateApiKey(orgId!, endpointId!),
     onSuccess: (data) => {
-      alert(`New API Key: ${data.apiKey}\nPlease save it now, you won't be able to see it again.`);
+      setApiKey(data.apiKey);
+      setShowKey(true);
+      toast.success('New API key generated — save it now, you won\'t see it again.');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error || 'Failed to regenerate API key');
     }
   });
+
+  const handleCopyKey = async () => {
+    if (!apiKey) return;
+    const ok = await copyToClipboard(apiKey);
+    if (ok) toast.success('API key copied to clipboard');
+  };
 
   const delMut = useMutation({
     mutationFn: () => deleteEndpoint(orgId!, endpointId!),
@@ -38,27 +55,62 @@ export default function EndpointDetailPage() {
 
   const handleTestProxy = async () => {
     if (!endpoint) return;
+    if (!apiKey) {
+      toast.error('API key required — regenerate your key first');
+      return;
+    }
+    setTestError(null);
+    setTestResult(null);
     setIsTesting(true);
     try {
+      const proxyUrl = `https://proxy.quantumbridge.io/${endpoint.proxySlug}${testPath.startsWith('/') ? testPath : '/' + testPath}`;
       const startTime = performance.now();
-      // Test proxy locally (assuming proxy runs on port 8080)
-      // Note: This relies on the API Key which we don't have stored. 
-      // This is a simulated tester or we would need the backend to support a test endpoint.
-      // For now, we simulate the test result since we can't do a real proxy call without CORS and API key.
-      await new Promise(r => setTimeout(r, 600));
+
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      };
+
+      const fetchOptions: RequestInit = {
+        method: testMethod,
+        headers,
+      };
+
+      if (testMethod !== 'GET' && testMethod !== 'HEAD' && testBody) {
+        fetchOptions.body = testBody;
+      }
+
+      const response = await fetch(proxyUrl, fetchOptions);
       const endTime = performance.now();
-      
+
+      const ecdsaSig = response.headers.get('x-qb-ecdsa-sig');
+      const dilithiumSig = response.headers.get('x-qb-dilithium-sig');
+      const keyVersion = response.headers.get('x-qb-key-version');
+      const encrypted = response.headers.get('qb-encrypted') === '1';
+
+      let data: any;
+      const contentType = response.headers.get('content-type');
+      if (encrypted && contentType === 'application/octet-stream') {
+        data = await response.text();
+        // Truncate encrypted base64 for display
+        if (data.length > 200) data = data.substring(0, 200) + '...';
+      } else if (contentType?.includes('application/json')) {
+        data = await response.json();
+      } else {
+        data = await response.text();
+      }
+
       setTestResult({
-        status: 200,
+        status: response.status,
         latency: Math.round(endTime - startTime),
-        sigs: 2,
-        ecdsa: true,
-        pqc: true,
-        version: 1,
-        data: { message: "Test successful (simulated)" }
+        data,
+        ecdsaSig,
+        dilithiumSig,
+        keyVersion: keyVersion ? parseInt(keyVersion, 10) : null,
+        encrypted,
       });
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      setTestError(e.message || 'Request failed — check that the proxy server is running');
     } finally {
       setIsTesting(false);
     }
@@ -121,21 +173,44 @@ export default function EndpointDetailPage() {
             />
           </div>
 
-          <button 
+          {!apiKey && (
+            <div className="mb-4 p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/20 text-yellow-400/80 text-xs">
+              API key required to test. Use "Regenerate API key" below to get one.
+            </div>
+          )}
+
+          <button
             onClick={handleTestProxy}
-            disabled={isTesting}
+            disabled={isTesting || !apiKey}
             className="w-full py-2 bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30 rounded-lg text-sm font-medium hover:bg-cyber-cyan/20 transition-colors mb-4 disabled:opacity-50"
           >
             {isTesting ? "Testing..." : "Send through proxy"}
           </button>
 
+          {testError && (
+            <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg text-red-400 text-xs mb-3">
+              {testError}
+            </div>
+          )}
+
           {testResult && (
             <div className="p-3 bg-black/40 border border-white/5 rounded-lg font-mono text-xs text-white/50 whitespace-pre-wrap">
-              <div className="text-green-400 mb-1">{testResult.status} OK — {testResult.latency}ms</div>
-              <div>X-QB-ECDSA-Verified: {testResult.ecdsa.toString()}</div>
-              <div>X-QB-Dilithium-Verified: {testResult.pqc.toString()}</div>
-              <div>X-QB-Key-Version: {testResult.version}</div>
-              <div className="mt-2 text-white/70">{JSON.stringify(testResult.data, null, 2)}</div>
+              <div className={testResult.status < 400 ? 'text-green-400 mb-1' : 'text-red-400 mb-1'}>
+                {testResult.status} — {testResult.latency}ms
+              </div>
+              {testResult.ecdsaSig && (
+                <div>X-QB-ECDSA-Sig: {testResult.ecdsaSig.substring(0, 40)}...</div>
+              )}
+              {testResult.dilithiumSig && (
+                <div>X-QB-Dilithium-Sig: {testResult.dilithiumSig.substring(0, 40)}...</div>
+              )}
+              {testResult.keyVersion != null && (
+                <div>X-QB-Key-Version: {testResult.keyVersion}</div>
+              )}
+              {testResult.encrypted && (
+                <div className="text-cyber-cyan">QB-Encrypted: true (response encrypted with AES-256-GCM)</div>
+              )}
+              <div className="mt-2 text-white/70">{typeof testResult.data === 'string' ? testResult.data : JSON.stringify(testResult.data, null, 2)}</div>
             </div>
           )}
         </div>
@@ -157,13 +232,41 @@ export default function EndpointDetailPage() {
           </div>
 
           <div className="flex gap-3">
-            <button 
+            <button
               onClick={() => regenMut.mutate()}
               disabled={regenMut.isPending}
               className="px-3 py-1.5 border border-white/10 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
             >
               {regenMut.isPending ? "..." : "Regenerate API key"}
             </button>
+
+            {apiKey && showKey && (
+              <div className="mt-4 p-3 rounded-lg bg-cyber-cyan/5 border border-cyber-cyan/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-cyber-cyan text-xs font-medium">API Key</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCopyKey}
+                      className="px-2 py-1 rounded bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan text-[10px] hover:bg-cyber-cyan/20 transition-colors"
+                    >
+                      Copy
+                    </button>
+                    <button
+                      onClick={() => { setShowKey(false); setApiKey(null); }}
+                      className="px-2 py-1 rounded bg-white/5 border border-white/10 text-white/40 text-[10px] hover:text-white/60 transition-colors"
+                    >
+                      Hide
+                    </button>
+                  </div>
+                </div>
+                <code className="block text-[10px] text-white/80 font-mono break-all select-all">
+                  {apiKey}
+                </code>
+                <p className="mt-1 text-white/30 text-[9px]">
+                  This key is shown once. Copy it now — it cannot be retrieved later.
+                </p>
+              </div>
+            )}
             <button 
               onClick={() => {
                 if (confirm("Are you sure you want to delete this endpoint?")) {

@@ -1,12 +1,13 @@
 import rateLimit from 'express-rate-limit';
 
 /**
- * Global management API limiter: 100 req / 15 min per IP
+ * Global management API limiter: 100 req / 15 min per IP (production)
+ * In development: 1000 req / 15 min to allow for hot-reloading and testing
  * Applied to all API_Server management endpoints (Req 2.7, 10.4)
  */
 export const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // Higher limit in dev
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },

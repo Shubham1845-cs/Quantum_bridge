@@ -198,7 +198,7 @@ const FORBIDDEN_FIELDS = [
 ];
 
 describe('Property 36: Public Verification Field Restriction (Req 18.2, 18.4)', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it('response contains only allowed fields for any valid requestId', async () => {
     await fc.assert(
@@ -280,7 +280,7 @@ describe('Property 36: Public Verification Field Restriction (Req 18.2, 18.4)', 
 // ---------------------------------------------------------------------------
 
 describe('Property 37: Verification Access Control (Req 18.5, 18.7)', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it('returns 404 for any unknown requestId', async () => {
     await fc.assert(

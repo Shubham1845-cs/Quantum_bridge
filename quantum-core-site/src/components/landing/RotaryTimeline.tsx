@@ -119,13 +119,13 @@ export default function RotaryTimeline() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
-  // Auto-advance every 4s, looping
+  // Auto-advance every 3s, looping
   useEffect(() => {
     if (isPaused) return;
     const id = setInterval(() => {
       const next = (activeIndexRef.current + 1) % timelineData.length;
       snapTo(next);
-    }, 4000);
+    }, 3000);
     return () => clearInterval(id);
   }, [isPaused]);
 
@@ -134,8 +134,6 @@ export default function RotaryTimeline() {
   return (
     <div
       ref={containerRef}
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
       className="relative min-h-screen w-full overflow-hidden bg-[#0a0a0a] text-white font-sans"
     >
       <div className="pointer-events-none absolute inset-0">

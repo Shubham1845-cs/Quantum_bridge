@@ -10,6 +10,7 @@ import { env } from './env.js';
 export const redis = new Redis(env.REDIS_URL, {
   lazyConnect: true,
   maxRetriesPerRequest: 3,
+  tls: env.REDIS_URL.startsWith('rediss://') ? {} : undefined,
 });
 
 redis.on('connect', () => console.info('[Redis] Connected'));
@@ -33,5 +34,6 @@ export function duplicate(): Redis {
   return new Redis(env.REDIS_URL, {
     lazyConnect: true,
     maxRetriesPerRequest: 3,
+    tls: env.REDIS_URL.startsWith('rediss://') ? {} : undefined,
   });
 }

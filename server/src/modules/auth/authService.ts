@@ -128,7 +128,15 @@ function verificationExpiresAt(): Date {
 }
 
 async function sendVerificationEmail(email: string, token: string): Promise<void> {
-  const verifyUrl = `${env.ALLOWED_ORIGIN}/auth/verify-email?token=${token}`;
+  // In development, log the verification URL instead of sending a real email
+  if (env.NODE_ENV === 'development') {
+    const verifyUrl = `http://localhost:5173/verify-email?token=${token}`;
+    logger.info('verification_email_dev_mode', { email, verifyUrl });
+    console.log(`\n📧 [DEV] Verification URL for ${email}:\n   ${verifyUrl}\n`);
+    return;
+  }
+
+  const verifyUrl = `${env.ALLOWED_ORIGIN}/verify-email?token=${token}`;
 
   await resend.emails.send({
     from: 'QuantumBridge <noreply@quantumbridge.io>',
@@ -165,24 +173,33 @@ export async function register(
   // Hash password with argon2id (default algorithm for the argon2 package)
   const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
 
-  const verificationToken = generateVerificationToken();
-  const verificationTokenExpiresAt = verificationExpiresAt();
+  // In development mode: auto-verify accounts so devs can log in immediately
+  // without needing real email delivery.
+  const isDev = env.NODE_ENV === 'development';
+
+  const verificationToken = isDev ? undefined : generateVerificationToken();
+  const verificationTokenExpiresAt = isDev ? undefined : verificationExpiresAt();
 
   try {
     const user = await User.create({
       email: normalizedEmail,
       passwordHash,
-      isVerified: false,
+      isVerified: isDev,   // auto-verified in dev
       verificationToken,
       verificationTokenExpiresAt,
     });
 
-    // Send email after successful DB write; if email fails we still have the user
-    // and they can use resendVerification.
-    try {
-      await sendVerificationEmail(normalizedEmail, verificationToken);
-    } catch (emailErr) {
-      logger.error('verification_email_failed', { email: normalizedEmail, error: emailErr });
+    if (!isDev) {
+      // Send email after successful DB write; if email fails we still have the user
+      // and they can use resendVerification.
+      try {
+        await sendVerificationEmail(normalizedEmail, verificationToken!);
+      } catch (emailErr) {
+        logger.error('verification_email_failed', { email: normalizedEmail, error: emailErr });
+      }
+    } else {
+      logger.info('user_registered_dev_auto_verified', { userId: user._id.toString(), email: normalizedEmail });
+      console.log(`\n✅ [DEV] Account auto-verified — you can log in immediately at http://localhost:5173/login\n`);
     }
 
     logger.info('user_registered', { userId: user._id.toString() });

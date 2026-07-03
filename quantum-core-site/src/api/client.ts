@@ -56,12 +56,23 @@ apiClient.interceptors.response.use(
         
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, clear token and redirect to login
-        console.log('[API Client] Token refresh failed, redirecting to login');
+        // Refresh failed, clear token
+        console.log('[API Client] Token refresh failed');
         setToken(null);
-        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
+        
+        // Only redirect to login if we're on a protected route
+        // Public routes: /, /login, /register, /verify-email, /verify/*
+        if (typeof window !== 'undefined') {
+          const pathname = window.location.pathname;
+          const publicRoutes = ['/', '/login', '/register', '/verify-email'];
+          const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/verify/');
+          
+          if (!isPublicRoute) {
+            console.log('[API Client] Redirecting to login from protected route');
+            window.location.href = '/login';
+          }
         }
+        
         return Promise.reject(refreshError);
       }
     }

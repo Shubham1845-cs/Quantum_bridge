@@ -407,7 +407,7 @@ export default function QuantumPricing() {
       className="relative w-full overflow-hidden py-24 sm:py-32"
       style={{
         background:
-          "radial-gradient(ellipse 90% 60% at 50% 0%, rgba(103,232,249,0.10), transparent 60%), radial-gradient(ellipse 70% 50% at 50% 100%, rgba(192,132,252,0.10), transparent 60%)",
+          "radial-gradient(ellipse 90% 60% at 50% 0%, rgba(103,232,249,0.10), transparent 60%), linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.6) 100%)",
       }}
     >
       {/* Animated grid bg */}

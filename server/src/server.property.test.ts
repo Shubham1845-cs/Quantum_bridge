@@ -249,7 +249,7 @@ describe('Property 34: SIGTERM Drain Correctness (Req 15.9, 15.10)', () => {
           // logger.info must have been called with a message containing the label
           const infoCalls = vi.mocked(logger.info).mock.calls;
           const hasLabelLog = infoCalls.some(([msg]) =>
-            typeof msg === 'string' && msg.includes(label)
+            typeof (msg as unknown) === 'string' && (msg as unknown as string).includes(label)
           );
           expect(hasLabelLog).toBe(true);
 

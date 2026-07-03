@@ -1,28 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import mongoose, { Schema, model, models } from 'mongoose';
+import mongoose from 'mongoose';
+import { OrgMember } from '../modules/organization/OrgMember.js';
 
 type OrgRole = 'owner' | 'admin' | 'viewer';
-
-// Minimal OrgMember model — used only for role lookup here.
-// The full model will be defined in the organization module (task 2.1).
-interface IOrgMemberLean {
-  orgId: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId;
-  role: OrgRole;
-  status: 'active' | 'pending';
-}
-
-const orgMemberSchema = new Schema<IOrgMemberLean>({
-  orgId: { type: Schema.Types.ObjectId, required: true },
-  userId: { type: Schema.Types.ObjectId, required: true },
-  role: { type: String, enum: ['owner', 'admin', 'viewer'], required: true },
-  status: { type: String, enum: ['active', 'pending'], required: true },
-});
-
-// Reuse existing model if already registered (avoids OverwriteModelError in tests)
-const OrgMember =
-  (models['OrgMember'] as mongoose.Model<IOrgMemberLean>) ||
-  model<IOrgMemberLean>('OrgMember', orgMemberSchema);
 
 // Role hierarchy: owner > admin > viewer
 const ROLE_RANK: Record<OrgRole, number> = { owner: 3, admin: 2, viewer: 1 };

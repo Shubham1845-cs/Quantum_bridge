@@ -429,7 +429,7 @@ describe('Property 29: Webhook Retry Bound (Req 9.4)', () => {
     // Make setTimeout fire immediately so retry delays don't block tests.
     // The real sleep() in webhookService uses setTimeout — we replace it with
     // a version that resolves instantly, keeping the retry logic intact.
-    vi.spyOn(global, 'setTimeout').mockImplementation((fn: TimerHandler) => {
+    vi.spyOn(global, 'setTimeout').mockImplementation((fn: Parameters<typeof setTimeout>[0]) => {
       if (typeof fn === 'function') fn();
       return 0 as unknown as ReturnType<typeof setTimeout>;
     });

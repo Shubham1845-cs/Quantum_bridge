@@ -13,6 +13,8 @@ type Props = {
  * Two stacked <video> elements alternate playback; near the end of the
  * active clip, the idle clip is started and faded in while the active
  * one fades out — producing an invisible loop point.
+ * 
+ * Video URL: https://res.cloudinary.com/dashtm8a6/video/upload/v1779628707/mp__qqmqfc.mp4
  */
 export default function SeamlessVideoLoop({
   src,
@@ -30,7 +32,11 @@ export default function SeamlessVideoLoop({
     const b = videoBRef.current;
     if (!a || !b) return;
 
-    a.play().catch(() => {});
+    // Start playing video A with error handling
+    a.play().catch((error) => {
+      console.error('Video A failed to play:', error);
+      // Fallback: component will still render with static background
+    });
 
     const onTimeUpdate = (e: Event) => {
       const current = e.currentTarget as HTMLVideoElement;
@@ -54,7 +60,8 @@ export default function SeamlessVideoLoop({
               switchingRef.current = false;
             }, crossfade * 1000 + 50);
           })
-          .catch(() => {
+          .catch((error) => {
+            console.error('Video crossfade failed:', error);
             switchingRef.current = false;
           });
       }

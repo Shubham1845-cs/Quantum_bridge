@@ -10,6 +10,31 @@ export const orgRouter = Router();
 // Organization CRUD
 // ---------------------------------------------------------------------------
 
+// GET /orgs — list all organizations the authenticated user belongs to
+orgRouter.get('/', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { OrgMember } = await import('./OrgMember.js');
+    const { Organization } = await import('./Organization.js');
+
+    const memberships = await OrgMember.find({
+      userId: req.user!.sub,
+      status: 'active',
+    }).lean();
+
+    if (memberships.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    const orgIds = memberships.map((m) => m.orgId);
+    const orgs = await Organization.find({ _id: { $in: orgIds } }).lean();
+    res.json(orgs);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: msg });
+  }
+});
+
 // POST /orgs — create a new organization (Req 3.1)
 orgRouter.post('/', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {

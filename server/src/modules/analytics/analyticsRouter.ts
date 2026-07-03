@@ -3,7 +3,8 @@ import { Types } from 'mongoose';
 import { authenticate } from '../../middleware/authenticate.js';
 import { requireRole } from '../../middleware/requireRole.js';
 import { ProxyLog } from '../proxy/ProxyLog.js';
-
+import { Organization } from '../organization/Organization.js';
+import { PLAN_QUOTA } from '../billing/quotaService.js';
 export const analyticsRouter = Router({ mergeParams: true });
 
 // ---------------------------------------------------------------------------
@@ -134,12 +135,22 @@ analyticsRouter.get(
     ]);
 
     const total = agg?.totalRequests ?? 0;
+    
+    // Fetch org for plan details
+    const org = await Organization.findById(orgId).lean();
+    const plan = org?.plan || 'free';
+    const planUsed = org?.monthlyRequestCount || 0;
+    const rawQuota = PLAN_QUOTA[plan] ?? 10_000;
+    const planQuota = rawQuota === Infinity ? 0 : rawQuota;
+
     res.json({
-      totalRequestsToday:   total,
+      requestsToday:   total,
       threatFlagsToday:     agg?.threatFlagsToday ?? 0,
       avgLatencyMs:         agg ? Math.round(agg.avgLatencyMs) : 0,
-      ecdsaSuccessRate:     total > 0 ? agg.ecdsaSuccesses / total : 0,
-      dilithiumSuccessRate: total > 0 ? agg.dilithiumSuccesses / total : 0,
+      sigSuccessRate:       total > 0 ? (agg.ecdsaSuccesses + agg.dilithiumSuccesses) / (total * 2) : 0,
+      planUsed,
+      planQuota,
+      plan
     });
   }
 );
