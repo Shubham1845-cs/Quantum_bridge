@@ -139,7 +139,7 @@ async function sendVerificationEmail(email: string, token: string): Promise<void
   const verifyUrl = `${env.ALLOWED_ORIGIN}/verify-email?token=${token}`;
 
   const result = await resend.emails.send({
-    from: 'QuantumBridge <onboarding@resend.dev>',
+    from: 'QuantumBridge <noreply@quantumbridge.dpdns.org>',
     to: email,
     subject: 'Verify your QuantumBridge account',
     html: `
