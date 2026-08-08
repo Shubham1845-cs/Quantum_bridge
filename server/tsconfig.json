@@ -5,7 +5,6 @@
     "moduleResolution": "NodeNext",
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"],
     "paths": {
       "@server/*": ["./src/*"],
       "@shared/*": ["../shared/*"]
