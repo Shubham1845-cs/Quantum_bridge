@@ -8,8 +8,8 @@
     "dev": "tsx watch --env-file=.env src/api-server.ts",
     "dev:proxy": "tsx watch --env-file=.env src/proxy-server.ts",
     "build": "tsc --project tsconfig.json",
-    "start": "node --env-file=.env dist/api-server.js",
-    "start:proxy": "node --env-file=.env dist/proxy-server.js",
+    "start": "node dist/api-server.js",
+    "start:proxy": "node dist/proxy-server.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },
