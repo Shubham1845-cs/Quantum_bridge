@@ -1,6 +1,18 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Calendar, ArrowRight, Shield, Zap, Lock } from "lucide-react";
+import {
+  Calendar,
+  ArrowRight,
+  Shield,
+  Zap,
+  Lock,
+  Newspaper,
+  Globe,
+  Cpu,
+  ExternalLink,
+} from "lucide-react";
 import { Link } from "react-router-dom";
+import { fetchQuantumNews, type NewsArticle } from "../../api/news";
 
 interface NewsItem {
   date: string;
@@ -9,9 +21,10 @@ interface NewsItem {
   icon: React.ComponentType<{ size: number; className?: string }>;
   href: string;
   category: string;
+  external?: boolean;
 }
 
-const newsItems: NewsItem[] = [
+const FALLBACK_NEWS: NewsItem[] = [
   {
     date: "March 2025",
     title: "NIST FIPS 204 ML-DSA-65 Integration Complete",
@@ -38,6 +51,38 @@ const newsItems: NewsItem[] = [
   }
 ];
 
+function pickIcon(text: string): NewsItem["icon"] {
+  const t = text.toLowerCase();
+  if (/(latency|performance|speed|fast)/.test(t)) return Zap;
+  if (/(key|encrypt|attack|harvest|vuln|breach|secur)/.test(t)) return Lock;
+  if (/(nist|fips|standard|sign|dilithium|ecdsa|ml-dsa)/.test(t)) return Shield;
+  if (/(compute|chip|hardware|cpu|qubit)/.test(t)) return Cpu;
+  if (/(market|industry|funding|launch|partner)/.test(t)) return Globe;
+  return Newspaper;
+}
+
+function mapArticle(a: NewsArticle): NewsItem {
+  const raw = (a.description || "").trim();
+  const excerpt = raw
+    ? raw.length > 150
+      ? raw.slice(0, 150) + "…"
+      : raw
+    : "Latest coverage from the post-quantum cryptography space.";
+  return {
+    date: new Date(a.publishedAt).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+    title: a.title,
+    excerpt,
+    icon: pickIcon(`${a.title} ${a.description ?? ""}`),
+    href: a.url,
+    category: a.source?.name || "Quantum Security",
+    external: true,
+  };
+}
+
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },
   visible: (i: number) => ({
@@ -48,6 +93,27 @@ const fadeUp = {
 };
 
 export default function NewsSection() {
+  const [items, setItems] = useState<NewsItem[]>(FALLBACK_NEWS);
+  const [live, setLive] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchQuantumNews()
+      .then((articles) => {
+        if (cancelled || articles.length === 0) return;
+        setItems(articles.map(mapArticle));
+        setLive(true);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section
       id="news"
@@ -144,86 +210,163 @@ export default function NewsSection() {
 
         {/* News Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {newsItems.map((item, i) => {
-            const Icon = item.icon;
-            return (
-              <motion.article
-                key={item.title}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: "-50px" }}
-                custom={i}
-                variants={fadeUp}
-                whileHover={{ y: -6, scale: 1.02 }}
-                className="relative group cursor-pointer rounded-2xl overflow-hidden"
-                style={{
-                  background: "linear-gradient(155deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 60%, rgba(255,255,255,0.01) 100%)",
-                  border: "1px solid rgba(255,255,255,0.09)",
-                  backdropFilter: "blur(20px)",
-                  boxShadow: "0 1px 0 rgba(255,255,255,0.06) inset, 0 20px 60px -30px rgba(192,132,252,0.3), 0 0 0 1px rgba(255,255,255,0.02)",
-                }}
-              >
-                <Link to={item.href} className="block p-6">
-                  {/* Category Badge */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <span
-                      className="text-xs font-medium tracking-wider uppercase px-2 py-1 rounded"
-                      style={{
-                        color: "#67e8f9",
-                        background: "rgba(103,232,249,0.1)",
-                      }}
-                    >
-                      {item.category}
-                    </span>
-                    <Icon size={16} style={{ color: "#67e8f9" }} />
-                  </div>
-
-                  {/* Date */}
-                  <div className="flex items-center gap-2 mb-3 text-sm text-white/50">
-                    <Calendar size={14} />
-                    <time>{item.date}</time>
-                  </div>
-
-                  {/* Title */}
-                  <h3
-                    className="text-lg font-semibold mb-3 group-hover:text-cyan-400 transition-colors"
-                    style={{
-                      fontFamily: "var(--font-heading)",
-                      color: "#FFFFFF",
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    {item.title}
-                  </h3>
-
-                  {/* Excerpt */}
-                  <p
-                    className="text-sm mb-4"
-                    style={{
-                      color: "rgba(255,255,255,0.65)",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {item.excerpt}
-                  </p>
-
-                  {/* Read More Link */}
-                  <div className="flex items-center gap-2 text-sm font-medium text-cyan-400 group-hover:gap-3 transition-all">
-                    Read more
-                    <ArrowRight size={16} />
-                  </div>
-                </Link>
-
-                {/* Hover glow effect */}
+          {loading
+            ? Array.from({ length: 3 }).map((_, i) => (
                 <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                  key={i}
+                  className="rounded-2xl p-6 animate-pulse"
                   style={{
-                    background: "radial-gradient(circle at center, rgba(103,232,249,0.08) 0%, transparent 70%)",
+                    background:
+                      "linear-gradient(155deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
+                    border: "1px solid rgba(255,255,255,0.06)",
                   }}
-                />
-              </motion.article>
-            );
-          })}
+                >
+                  <div className="h-5 w-24 rounded bg-white/10 mb-4" />
+                  <div className="h-4 w-32 rounded bg-white/[0.07] mb-6" />
+                  <div className="h-5 w-full rounded bg-white/[0.07] mb-2" />
+                  <div className="h-5 w-3/4 rounded bg-white/[0.07] mb-4" />
+                  <div className="h-3 w-full rounded bg-white/[0.05] mb-2" />
+                  <div className="h-3 w-2/3 rounded bg-white/[0.05]" />
+                </div>
+              ))
+            : items.map((item, i) => {
+                const Icon = item.icon;
+                return (
+                  <motion.article
+                    key={item.title}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, margin: "-50px" }}
+                    custom={i}
+                    variants={fadeUp}
+                    whileHover={{ y: -6, scale: 1.02 }}
+                    className="relative group cursor-pointer rounded-2xl overflow-hidden"
+                    style={{
+                      background: "linear-gradient(155deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 60%, rgba(255,255,255,0.01) 100%)",
+                      border: "1px solid rgba(255,255,255,0.09)",
+                      backdropFilter: "blur(20px)",
+                      boxShadow: "0 1px 0 rgba(255,255,255,0.06) inset, 0 20px 60px -30px rgba(192,132,252,0.3), 0 0 0 1px rgba(255,255,255,0.02)",
+                    }}
+                  >
+                    {item.external ? (
+                      <a
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block p-6"
+                      >
+                        {/* Category Badge */}
+                        <div className="flex items-center gap-2 mb-4">
+                          <span
+                            className="text-xs font-medium tracking-wider uppercase px-2 py-1 rounded"
+                            style={{
+                              color: "#67e8f9",
+                              background: "rgba(103,232,249,0.1)",
+                            }}
+                          >
+                            {item.category}
+                          </span>
+                          <Icon size={16} className="text-cyber-cyan" />
+                        </div>
+
+                        {/* Date */}
+                        <div className="flex items-center gap-2 mb-3 text-sm text-white/50">
+                          <Calendar size={14} />
+                          <time>{item.date}</time>
+                        </div>
+
+                        {/* Title */}
+                        <h3
+                          className="text-lg font-semibold mb-3 transition-colors"
+                          style={{
+                            fontFamily: "var(--font-heading)",
+                            color: "#FFFFFF",
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          {item.title}
+                        </h3>
+
+                        {/* Excerpt */}
+                        <p
+                          className="text-sm mb-4"
+                          style={{
+                            color: "rgba(255,255,255,0.65)",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {item.excerpt}
+                        </p>
+
+                        {/* Read More Link */}
+                        <div className="flex items-center gap-2 text-sm font-medium text-cyan-400 group-hover:gap-3 transition-all">
+                          Read more
+                          <ExternalLink size={15} />
+                        </div>
+                      </a>
+                    ) : (
+                      <Link to={item.href} className="block p-6">
+                        {/* Category Badge */}
+                        <div className="flex items-center gap-2 mb-4">
+                          <span
+                            className="text-xs font-medium tracking-wider uppercase px-2 py-1 rounded"
+                            style={{
+                              color: "#67e8f9",
+                              background: "rgba(103,232,249,0.1)",
+                            }}
+                          >
+                            {item.category}
+                          </span>
+                          <Icon size={16} className="text-cyber-cyan" />
+                        </div>
+
+                        {/* Date */}
+                        <div className="flex items-center gap-2 mb-3 text-sm text-white/50">
+                          <Calendar size={14} />
+                          <time>{item.date}</time>
+                        </div>
+
+                        {/* Title */}
+                        <h3
+                          className="text-lg font-semibold mb-3 group-hover:text-cyan-400 transition-colors"
+                          style={{
+                            fontFamily: "var(--font-heading)",
+                            color: "#FFFFFF",
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          {item.title}
+                        </h3>
+
+                        {/* Excerpt */}
+                        <p
+                          className="text-sm mb-4"
+                          style={{
+                            color: "rgba(255,255,255,0.65)",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {item.excerpt}
+                        </p>
+
+                        {/* Read More Link */}
+                        <div className="flex items-center gap-2 text-sm font-medium text-cyan-400 group-hover:gap-3 transition-all">
+                          Read more
+                          <ArrowRight size={16} />
+                        </div>
+                      </Link>
+                    )}
+
+                    {/* Hover glow effect */}
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                      style={{
+                        background: "radial-gradient(circle at center, rgba(103,232,249,0.08) 0%, transparent 70%)",
+                      }}
+                    />
+                  </motion.article>
+                );
+              })}
         </div>
 
         {/* View All Link */}

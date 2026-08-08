@@ -3,15 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "apps/*",
+    "quantum-core-site",
+    "quantum-core-site/landingpage",
     "server",
     "shared"
   ],
   "scripts": {
     "dev:api": "npm run dev --workspace=server",
-    "dev:dashboard": "npm run dev --workspace=apps/dashboard",
-    "dev:web": "npm run dev --workspace=apps/web",
-    "build": "npm run build --workspaces",
+    "dev:proxy": "npm run dev:proxy --workspace=server",
+    "dev:dashboard": "npm run dev --workspace=quantum-core-site",
+    "dev:web": "npm run dev --workspace=quantum-core-site/landingpage",
+    "build": "npm run build --workspaces --if-present",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

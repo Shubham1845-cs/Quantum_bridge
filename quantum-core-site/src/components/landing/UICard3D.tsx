@@ -76,7 +76,7 @@ export default function UICard3D() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .parent {
           width: 340px;
           height: 480px;

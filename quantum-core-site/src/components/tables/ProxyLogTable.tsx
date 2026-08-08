@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getProxyLogs, type ProxyLog } from '../../api/analytics';
+import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
@@ -17,11 +18,12 @@ export default function ProxyLogTable({ orgId, endpointId }: ProxyLogTableProps)
   const [threatOnly, setThreatOnly] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const toast = useToast();
+  const { loading: authLoading } = useAuth();
 
   const { data, isLoading } = useQuery({
     queryKey: ['proxyLogs', orgId, page, threatOnly, endpointId],
     queryFn: () => getProxyLogs(orgId, { page, limit: 20, threatFlag: threatOnly ? true : undefined, endpointId }),
-    enabled: !!orgId,
+    enabled: !!orgId && !authLoading,
   });
 
   const handleCopyRequestId = async (requestId: string) => {

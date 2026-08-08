@@ -19,6 +19,7 @@ export interface CreateEndpointRequest {
 
 export interface CreateEndpointResponse extends Endpoint {
   apiKey: string;
+  proxyUrl: string;
 }
 
 /** GET /orgs/:orgId/endpoints — list all endpoints for an organization */

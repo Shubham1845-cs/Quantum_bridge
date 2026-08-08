@@ -69,7 +69,7 @@ export default function ApiKeyModal({ isOpen, onClose, apiKey }: ApiKeyModalProp
         <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10">
           <h4 className="font-medium text-white mb-2">How to use this key:</h4>
           <ol className="text-sm text-white/60 space-y-1 list-decimal list-inside">
-            <li>Include it in the <code className="text-cyber-cyan">X-API-Key</code> header</li>
+            <li>Include it as <code className="text-cyber-cyan">{'Authorization: Bearer <key>'}</code></li>
             <li>Send requests to your proxy URL</li>
             <li>Never commit this key to version control</li>
             <li>Rotate keys regularly for security</li>

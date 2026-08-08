@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { Mail, RefreshCw } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { resendVerification } from "../api/auth";
 import SeamlessVideoLoop from "../components/landing/SeamlessVideoLoop";
 
 export default function LoginPage() {
@@ -12,18 +14,43 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showResend, setShowResend] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
+    setShowResend(false);
+    setResendSuccess(false);
     setLoading(true);
     try {
       await login(email, password);
       navigate("/dashboard", { replace: true });
     } catch (err: any) {
       setError(err.message || "Login failed");
+      // Show resend button when email is not verified (403)
+      if (err.statusCode === 403) {
+        setShowResend(true);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResendLoading(true);
+    setResendSuccess(false);
+    try {
+      await resendVerification(email);
+      setResendSuccess(true);
+      setShowResend(false);
+      setError("");
+    } catch {
+      // resendVerification always returns 200 per spec — so this is a network error
+      setError("Could not resend email. Check your connection and try again.");
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -126,16 +153,51 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* Error */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="px-4 py-3 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-sm"
-              >
-                {error}
-              </motion.div>
-            )}
+            {/* Error + optional resend */}
+            <AnimatePresence mode="wait">
+              {resendSuccess && (
+                <motion.div
+                  key="success"
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="px-4 py-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-sm flex items-center gap-2"
+                >
+                  <Mail className="h-4 w-4 shrink-0" />
+                  Verification email sent! Check your inbox.
+                </motion.div>
+              )}
+
+              {error && !resendSuccess && (
+                <motion.div
+                  key="error"
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="rounded-xl border border-red-500/20 bg-red-500/5 overflow-hidden"
+                >
+                  <p className="px-4 pt-3 pb-2 text-red-400 text-sm">{error}</p>
+
+                  {showResend && (
+                    <div className="px-4 pb-3">
+                      <button
+                        type="button"
+                        onClick={handleResend}
+                        disabled={resendLoading}
+                        className="flex items-center gap-2 text-xs font-medium text-cyber-cyan hover:text-cyber-cyan/80 transition-colors disabled:opacity-50"
+                      >
+                        {resendLoading ? (
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Mail className="h-3.5 w-3.5" />
+                        )}
+                        {resendLoading ? "Sending…" : "Resend verification email"}
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Submit */}
             <motion.button

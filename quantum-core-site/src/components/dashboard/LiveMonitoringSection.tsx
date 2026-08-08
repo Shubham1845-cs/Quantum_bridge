@@ -355,13 +355,13 @@ export default function LiveMonitoringSection() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-white font-medium">{event.eventId}</span>
                         <Badge 
-                          variant="secondary"
+                          variant="info"
                           className={cn(styles.bg, styles.text, styles.border, "border")}
                         >
                           {event.type.replace('_', ' ').toUpperCase()}
                         </Badge>
                         {event.method && (
-                          <Badge variant="secondary" className="font-mono text-xs">
+                          <Badge variant="info" className="font-mono text-xs">
                             {event.method}
                           </Badge>
                         )}

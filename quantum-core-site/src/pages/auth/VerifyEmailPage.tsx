@@ -9,17 +9,21 @@ export default function VerifyEmailPage() {
   const navigate = useNavigate();
   const toast = useToast();
   
-  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'expired'>('loading');
+  const [status, setStatus] = useState<'loading' | 'pending' | 'success' | 'error' | 'expired'>('loading');
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
   const [isResending, setIsResending] = useState(false);
 
   const token = searchParams.get('token');
+  const emailParam = searchParams.get('email');
 
   useEffect(() => {
+    // Arrived from registration with no token → show the "check your email"
+    // interstitial. Seed the email field from the query string so resend works
+    // without the user retyping it.
     if (!token) {
-      setStatus('error');
-      setError('No verification token provided');
+      if (emailParam) setEmail(emailParam);
+      setStatus('pending');
       return;
     }
 
@@ -39,7 +43,7 @@ export default function VerifyEmailPage() {
           setError(message || 'Verification failed');
         }
       });
-  }, [token]);
+  }, [token, emailParam]);
 
   const handleResend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +100,50 @@ export default function VerifyEmailPage() {
               <div className="w-12 h-12 border-2 border-cyber-cyan/30 border-t-cyber-cyan rounded-full animate-spin mx-auto mb-4" />
               <h1 className="text-xl font-bold text-white mb-2">Verifying your email...</h1>
               <p className="text-white/40 text-sm">Please wait a moment</p>
+            </div>
+          )}
+
+          {status === 'pending' && (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-cyber-cyan/10 border border-cyber-cyan/20 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-cyber-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-white mb-2">Check your email</h1>
+              <p className="text-white/40 text-sm mb-6">
+                We sent a verification link{emailParam ? <> to <span className="text-white/70 font-medium">{emailParam}</span></> : null}. Click it to activate your account, then sign in.
+              </p>
+
+              <form onSubmit={handleResend} className="space-y-4">
+                <div>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm placeholder-white/20 focus:outline-none focus:border-cyber-cyan/50 focus:ring-1 focus:ring-cyber-cyan/25 transition-all duration-300"
+                    placeholder="you@company.com"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isResending || !email}
+                  className="w-full px-6 py-3 rounded-xl font-bold text-black text-sm tracking-wider uppercase disabled:opacity-50"
+                  style={{
+                    background: 'linear-gradient(135deg, #00FFFF 0%, #8A2BE2 100%)',
+                  }}
+                >
+                  {isResending ? 'Sending...' : 'Resend verification email'}
+                </button>
+              </form>
+
+              <Link
+                to="/login"
+                className="inline-block mt-4 text-white/40 text-xs hover:text-white/60 transition-colors"
+              >
+                Already verified? Sign in
+              </Link>
             </div>
           )}
 

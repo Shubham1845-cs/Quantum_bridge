@@ -64,9 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(async (email: string, password: string) => {
     await authApi.register({ email, password });
-    // Auto-login after registration
-    await authApi.login(email, password);
-    setIsAuthenticated(true);
+    // Email verification is required before login — do NOT auto-login here.
+    // RegisterPage navigates to the /verify-email interstitial so the user can
+    // confirm their inbox before signing in.
   }, []);
 
   const logout = useCallback(async () => {

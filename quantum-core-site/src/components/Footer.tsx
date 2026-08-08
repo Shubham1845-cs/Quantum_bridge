@@ -7,14 +7,14 @@ export default function Footer() {
           <div className="md:col-span-1">
             <div className="flex items-center gap-1 mb-5">
               <span className="text-2xl font-bold tracking-tighter text-white">
-                NEX
-                <span className="text-cyber-cyan">U</span>S
+                Quantum
+                <span className="text-cyber-cyan">Bridge</span>
               </span>
               <span className="w-1.5 h-1.5 rounded-full bg-cyber-cyan ml-0.5 -mt-3" />
             </div>
             <p className="text-white/25 text-sm leading-relaxed font-light">
-              Next-generation quantum networking infrastructure. Redefining the
-              speed of data.
+              Quantum-safe API proxy infrastructure. Legacy APIs, post-quantum
+              protected.
             </p>
             <div className="flex gap-3 mt-6">
               {[
@@ -132,7 +132,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-white/15 text-xs font-light">
-            © 2026 NEXUS Corporation. All rights reserved. Quantum-secured
+            © 2026 QuantumBridge. All rights reserved. Post-quantum secured
             infrastructure.
           </p>
           <div className="flex gap-6">

@@ -1,130 +1,181 @@
-import { motion } from "framer-motion";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { KeyRound, RefreshCw, ShieldCheck } from "lucide-react";
 import { getKeys, rotateKeys } from "../api/keys";
+import { useToast } from "../hooks/useToast";
+import { useAuth } from "../context/AuthContext";
+import { PageHeader } from "../components/ui/PageHeader";
+import { Card } from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import ConfirmDialog from "../components/modals/ConfirmDialog";
+import { useState } from "react";
 
 export default function KeysPage() {
   const { orgId } = useParams<{ orgId: string }>();
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const { loading: authLoading } = useAuth();
+  const [showRotate, setShowRotate] = useState(false);
 
+  // Wait for auth to complete before firing the query so the access token
+  // is guaranteed to be set in the axios interceptor.
   const { data: keys, isLoading, error } = useQuery({
     queryKey: ["keys", orgId],
     queryFn: () => getKeys(orgId!),
-    enabled: !!orgId,
+    enabled: !!orgId && !authLoading,
+    retry: (failureCount, err: any) => {
+      // Don't retry on 401 — it means the session truly expired
+      if (err?.response?.status === 401) return false;
+      return failureCount < 1;
+    },
   });
 
   const rotateMut = useMutation({
     mutationFn: () => rotateKeys(orgId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["keys", orgId] });
-      alert("Keys rotated successfully.");
+      toast.success("Keys rotated successfully");
     },
-    onError: (err: any) => {
-      alert(`Failed to rotate keys: ${err.message}`);
-    }
+    onError: (err: any) => toast.error(`Failed to rotate keys: ${err.message}`),
   });
 
-  if (isLoading) return <div className="text-white/40">Loading keys...</div>;
-  
-  if (error) {
+  if (isLoading) {
     return (
-      <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/20 text-center">
-        <p className="text-red-400 text-sm mb-2">Failed to load keys</p>
-        <p className="text-white/40 text-xs">
-          Make sure the backend server is running and accessible
-        </p>
+      <div className="flex items-center gap-3 text-sm text-white/40">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-qb-cyan/30 border-t-qb-cyan" />
+        Loading keys…
       </div>
     );
   }
 
-  // Ensure keys is an array, handle API errors gracefully
+  if (error) {
+    const is401 = (error as any)?.response?.status === 401;
+    return (
+      <Card className="border-qb-rose/20 bg-qb-rose/5 p-6 text-center">
+        <p className="mb-2 text-sm text-qb-rose">Failed to load keys</p>
+        <p className="text-xs text-white/40">
+          {is401
+            ? "Your session may have expired — try refreshing the page."
+            : "Make sure the backend server is running and accessible."}
+        </p>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-4 text-xs"
+          onClick={() => queryClient.invalidateQueries({ queryKey: ["keys", orgId] })}
+        >
+          Retry
+        </Button>
+      </Card>
+    );
+  }
+
   const keysArray = Array.isArray(keys) ? keys : [];
-  const activeKey = keysArray.find(k => k.isActive);
-  const graceKeys = keysArray.filter(k => !k.isActive);
+  const activeKey = keysArray.find((k) => k.isActive);
+  const graceKeys = keysArray.filter((k) => !k.isActive);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold tracking-tight mb-1">Cryptographic keys</h2>
-        <p className="text-white/40 text-sm">PQC keypairs for your organization. Rotated every 90 days.</p>
-      </div>
+    <div>
+      <PageHeader
+        title="Cryptographic keys"
+        description="PQC keypairs for your organization. Rotated every 90 days."
+        actions={
+          activeKey && (
+            <Button onClick={() => setShowRotate(true)} variant="secondary" size="sm" disabled={rotateMut.isPending}>
+              <RefreshCw size={13} className="mr-1.5" />
+              {rotateMut.isPending ? "Rotating…" : "Rotate now"}
+            </Button>
+          )
+        }
+      />
 
       {keysArray.length === 0 ? (
-        <div className="p-8 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06] text-white/40">
-          <div className="text-4xl mb-4">🔐</div>
-          <p className="text-white/40 text-sm mb-4">No cryptographic keys found</p>
-          <p className="text-white/20 text-xs">Keys will be automatically generated when you create your first endpoint</p>
-        </div>
+        <Card className="p-16 text-center">
+          <KeyRound className="mx-auto mb-4 text-white/20" size={32} />
+          <p className="mb-1 text-sm text-white/50">No cryptographic keys found</p>
+          <p className="text-xs text-white/30">Keys are auto-generated when you create your first endpoint</p>
+        </Card>
       ) : (
         <>
           {activeKey && (
-        <div className="p-6 rounded-2xl bg-white/[0.02] border-l-2 border-green-500 border-t border-r border-b border-t-white/[0.06] border-r-white/[0.06] border-b-white/[0.06] mb-4 relative overflow-hidden">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <span className="font-bold text-lg">Version {activeKey.version}</span>
-                <span className="px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded text-[10px] uppercase tracking-wider font-bold">Active</span>
+            <Card variant="accent" className="mb-4 overflow-hidden p-6">
+              <div className="mb-6 flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-qb-emerald/30 bg-qb-emerald/10 text-qb-emerald">
+                    <KeyRound size={18} />
+                  </div>
+                  <div>
+                    <div className="mb-1 flex items-center gap-2.5">
+                      <span className="text-lg font-bold">Version {activeKey.version}</span>
+                      <span className="rounded-full border border-qb-emerald/20 bg-qb-emerald/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-qb-emerald">
+                        Active
+                      </span>
+                    </div>
+                    <div className="text-xs text-white/40">
+                      Generated {new Date(activeKey.createdAt).toLocaleDateString()} — expires {new Date(activeKey.expiresAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="text-white/40 text-xs">Generated {new Date(activeKey.createdAt).toLocaleDateString()} — expires {new Date(activeKey.expiresAt).toLocaleDateString()}</div>
-            </div>
-            <button 
-              onClick={() => {
-                if (confirm("Rotate keys now? The old keys will remain in grace period for 24h.")) {
-                  rotateMut.mutate();
-                }
-              }}
-              disabled={rotateMut.isPending}
-              className="px-3 py-1.5 border border-white/10 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
-            >
-              {rotateMut.isPending ? "Rotating..." : "Rotate now"}
-            </button>
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <div className="text-white/40 text-xs mb-2">ECDSA P-256 public key</div>
-              <div className="p-4 bg-black/40 border border-white/5 rounded-lg font-mono text-xs text-white/60 whitespace-pre-wrap break-all">
-                {activeKey.ecdsaPublicKey}
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div>
+                  <div className="mb-2 text-xs text-white/40">ECDSA P-256 public key</div>
+                  <div className="max-h-28 overflow-auto rounded-lg border border-white/5 bg-black/40 p-4 font-mono-qb text-xs whitespace-pre-wrap break-all text-white/60">
+                    {activeKey.ecdsaPublicKey}
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-2 text-xs text-white/40">ML-DSA-65 public key</div>
+                  <div className="max-h-28 overflow-auto rounded-lg border border-white/5 bg-black/40 p-4 font-mono-qb text-xs whitespace-pre-wrap break-all text-white/60">
+                    {activeKey.dilithiumPublicKey}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="text-white/40 text-xs mb-2">ML-DSA-65 public key</div>
-              <div className="p-4 bg-black/40 border border-white/5 rounded-lg font-mono text-xs text-white/60 whitespace-pre-wrap break-all">
-                {activeKey.dilithiumPublicKey}
+            </Card>
+          )}
+
+          {graceKeys.map((gk) => (
+            <Card key={gk.version} className="mb-4 p-5 opacity-65">
+              <div className="flex items-center gap-3">
+                <span className="text-lg font-bold text-white/60">Version {gk.version}</span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/40">
+                  Grace period
+                </span>
               </div>
+              <div className="mt-1 text-xs text-white/30">
+                Retired {new Date(gk.expiresAt).toLocaleDateString()} — grace expires{" "}
+                {gk.graceExpiresAt ? new Date(gk.graceExpiresAt).toLocaleDateString() : "unknown"}
+              </div>
+            </Card>
+          ))}
+
+          <Card className="mt-8 p-5">
+            <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+              <ShieldCheck size={15} className="text-qb-cyan" />
+              Auto-rotation schedule
             </div>
-          </div>
-        </div>
-      )}
-
-      {graceKeys.map(gk => (
-        <div key={gk.version} className="p-6 rounded-2xl bg-white/[0.01] border border-white/[0.03] opacity-60 mb-4">
-          <div className="flex items-center gap-3 mb-1">
-            <span className="font-bold text-lg text-white/60">Version {gk.version}</span>
-            <span className="px-2 py-0.5 bg-white/5 text-white/40 border border-white/10 rounded text-[10px] uppercase tracking-wider font-bold">Grace period</span>
-          </div>
-          <div className="text-white/30 text-xs">
-            Retired {new Date(gk.expiresAt).toLocaleDateString()} — 
-            grace expires {gk.graceExpiresAt ? new Date(gk.graceExpiresAt).toLocaleDateString() : "unknown"}
-          </div>
-        </div>
-      ))}
-
-      <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06] mt-8">
-        <div className="font-bold text-sm mb-2">Auto-rotation schedule</div>
-        <div className="text-white/40 text-sm leading-relaxed">
-          {activeKey 
-            ? `Next automatic rotation: ${new Date(activeKey.expiresAt).toLocaleDateString()}. `
-            : "Automatic rotation is scheduled. "}
-          Previous keypair is retained for 24 hours after rotation to verify in-flight requests. Private keys are never exposed — all signing happens server-side.
-        </div>
-      </div>
+            <p className="text-sm leading-relaxed text-white/45">
+              {activeKey
+                ? `Next automatic rotation: ${new Date(activeKey.expiresAt).toLocaleDateString()}. `
+                : "Automatic rotation is scheduled. "}
+              The previous keypair is retained for 24 hours after rotation to verify in-flight requests. Private keys are never exposed — all signing happens server-side.
+            </p>
+          </Card>
         </>
       )}
-    </motion.div>
+
+      <ConfirmDialog
+        isOpen={showRotate}
+        title="Rotate keys now?"
+        message="The old keys will remain in a grace period for 24h to verify in-flight requests."
+        confirmText="Rotate"
+        onConfirm={() => {
+          setShowRotate(false);
+          rotateMut.mutate();
+        }}
+        onClose={() => setShowRotate(false)}
+      />
+    </div>
   );
 }

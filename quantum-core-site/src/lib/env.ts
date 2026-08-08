@@ -5,11 +5,13 @@
 interface EnvConfig {
   apiUrl: string;
   stripePublicKey: string;
+  newsApiKey: string;
 }
 
 function validateEnv(): EnvConfig {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
   const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || '';
+  const newsApiKey = import.meta.env.VITE_NEWS_API_KEY || '';
 
   // Warn if Stripe key is missing (not critical for development)
   if (!stripePublicKey && import.meta.env.PROD) {
@@ -19,6 +21,7 @@ function validateEnv(): EnvConfig {
   return {
     apiUrl,
     stripePublicKey,
+    newsApiKey,
   };
 }
 

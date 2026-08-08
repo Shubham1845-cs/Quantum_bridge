@@ -30,7 +30,7 @@ interface QuantumAtmosphereProps {
   scrollRef: React.RefObject<HTMLDivElement | null>;
 }
 
-export default function QuantumAtmosphere({ scrollRef }: QuantumAtmosphereProps): JSX.Element {
+export default function QuantumAtmosphere({ scrollRef }: QuantumAtmosphereProps): React.JSX.Element {
   const { scrollYProgress } = useScroll({
     target: scrollRef,
     offset: ["start start", "end start"],

@@ -1,139 +1,139 @@
-# Frontend Design System
+    # Frontend Design System
 
-## General Rules
-- Build clean modern UI
-- Avoid generic AI-generated appearance
-- Use consistent spacing and typography
-- Prioritize readability and accessibility
-- Use responsive layouts
+    ## General Rules
+    - Build clean modern UI
+    - Avoid generic AI-generated appearance
+    - Use consistent spacing and typography
+    - Prioritize readability and accessibility
+    - Use responsive layouts
 
----
+    ---
 
-# Typography
+    # Typography
 
-## Font Family
-- Primary: Inter
-- Fallback: sans-serif
+    ## Font Family
+    - Primary: Inter
+    - Fallback: sans-serif
 
-## Type Scale
-- h1: 48px / font-bold
-- h2: 36px / font-semibold
-- h3: 28px / font-semibold
-- h4: 22px / font-medium
-- body-lg: 18px
-- body: 16px
-- small: 14px
+    ## Type Scale
+    - h1: 48px / font-bold
+    - h2: 36px / font-semibold
+    - h3: 28px / font-semibold
+    - h4: 22px / font-medium
+    - body-lg: 18px
+    - body: 16px
+    - small: 14px
 
-## Rules
-- Never use random font sizes
-- Maintain visual hierarchy
-- Limit to 4 typography levels
+    ## Rules
+    - Never use random font sizes
+    - Maintain visual hierarchy
+    - Limit to 4 typography levels
 
----
+    ---
 
-# Spacing System
+    # Spacing System
 
-Use 8px spacing grid only.
+    Use 8px spacing grid only.
 
-## Allowed spacing values
-- 4px
-- 8px
-- 16px
-- 24px
-- 32px
-- 48px
-- 64px
+    ## Allowed spacing values
+    - 4px
+    - 8px
+    - 16px
+    - 24px
+    - 32px
+    - 48px
+    - 64px
 
-## Rules
-- Avoid inconsistent padding
-- Keep card spacing symmetrical
-- Maintain generous whitespace
+    ## Rules
+    - Avoid inconsistent padding
+    - Keep card spacing symmetrical
+    - Maintain generous whitespace
 
----
+    ---
 
-# Colors
+    # Colors
 
-## Primary
-- primary-500: #2563eb
-- primary-600: #1d4ed8
+    ## Primary
+    - primary-500: #2563eb
+    - primary-600: #1d4ed8
 
-## Neutral
-- neutral-50: #f8fafc
-- neutral-100: #f1f5f9
-- neutral-800: #1e293b
-- neutral-900: #0f172a
+    ## Neutral
+    - neutral-50: #f8fafc
+    - neutral-100: #f1f5f9
+    - neutral-800: #1e293b
+    - neutral-900: #0f172a
 
-## Accent
-- accent-500: #7c3aed
+    ## Accent
+    - accent-500: #7c3aed
 
-## Rules
-- Do not use random hex colors
-- Keep palette minimal
-- Maintain strong contrast ratios
+    ## Rules
+    - Do not use random hex colors
+    - Keep palette minimal
+    - Maintain strong contrast ratios
 
----
+    ---
 
-# Components
+    # Components
 
-## Buttons
-- Rounded-lg
-- Clear hover states
-- Smooth transitions
-- Consistent heights
+    ## Buttons
+    - Rounded-lg
+    - Clear hover states
+    - Smooth transitions
+    - Consistent heights
 
-## Cards
-- Subtle shadows
-- Large padding
-- Rounded corners
-- Clean separation
+    ## Cards
+    - Subtle shadows
+    - Large padding
+    - Rounded corners
+    - Clean separation
 
-## Forms
-- Vertical layouts preferred
-- Consistent label spacing
-- Large touch targets
+    ## Forms
+    - Vertical layouts preferred
+    - Consistent label spacing
+    - Large touch targets
 
----
+    ---
 
-# Layout Rules
+    # Layout Rules
 
-- Use grid-based layouts
-- Avoid cluttered screens
-- Prefer max-width containers
-- Maintain visual balance
+    - Use grid-based layouts
+    - Avoid cluttered screens
+    - Prefer max-width containers
+    - Maintain visual balance
 
----
+    ---
 
-# Animation
+    # Animation
 
-- Use subtle motion only
-- Prefer fade and scale transitions
-- Avoid excessive animations
+    - Use subtle motion only
+    - Prefer fade and scale transitions
+    - Avoid excessive animations
 
----
+    ---
 
-# Avoid
+    # Avoid
 
-- Random gradients everywhere
-- Neon glowing UI
-- Oversized shadows
-- Inconsistent spacing
-- Too many colors
-- Generic AI dashboard look
+    - Random gradients everywhere
+    - Neon glowing UI
+    - Oversized shadows
+    - Inconsistent spacing
+    - Too many colors
+    - Generic AI dashboard look
 
----
+    ---
 
-# Preferred Stack
+    # Preferred Stack
 
-- React
-- TailwindCSS
-- shadcn/ui
-- Framer Motion
+    - React
+    - TailwindCSS
+    - shadcn/ui
+    - Framer Motion
 
----
+    ---
 
-# Code Style
+    # Code Style
 
-- Use reusable components
-- Keep components modular
-- Avoid deeply nested JSX
-- Prefer readable Tailwind classes
+    - Use reusable components
+    - Keep components modular
+    - Avoid deeply nested JSX
+    - Prefer readable Tailwind classes

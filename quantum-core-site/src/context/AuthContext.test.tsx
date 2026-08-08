@@ -59,7 +59,7 @@ describe('AuthContext', () => {
     await result.current.login('test@example.com', 'password123');
 
     // Verify login was called
-    expect(authApi.login).toHaveBeenCalledwith('test@example.com', 'password123');
+    expect(authApi.login).toHaveBeenCalledWith('test@example.com', 'password123');
     expect(result.current.isAuthenticated).toBe(true);
   });
 
@@ -82,7 +82,9 @@ describe('AuthContext', () => {
     expect(result.current.isAuthenticated).toBe(false);
   });
 
-  it('should handle successful registration', async () => {
+  it('should handle successful registration without auto-login', async () => {
+    // Registration creates the account but must NOT authenticate — email
+    // verification is required first (RegisterPage routes to /verify-email).
     vi.mocked(authApi.register).mockResolvedValue(undefined);
     vi.mocked(authApi.login).mockResolvedValue(undefined);
 
@@ -96,16 +98,13 @@ describe('AuthContext', () => {
     // Perform registration
     await result.current.register('newuser@example.com', 'password123');
 
-    // Verify both register and login were called
+    // register was called, but login must NOT be (verification still pending)
     expect(authApi.register).toHaveBeenCalledWith({
       email: 'newuser@example.com',
       password: 'password123',
     });
-    expect(authApi.login).toHaveBeenCalledWith(
-      'newuser@example.com',
-      'password123'
-    );
-    expect(result.current.isAuthenticated).toBe(true);
+    expect(authApi.login).not.toHaveBeenCalled();
+    expect(result.current.isAuthenticated).toBe(false);
   });
 
   it('should handle logout', async () => {

@@ -16,16 +16,16 @@ const ALGOS: Algo[] = [
   { name: "AES-256-GCM", type: "SYMMETRIC CIPHER", today: true, postQ: true, icon: Cpu },
 ];
 
-// CRT phosphor palette
+// CRT phosphor palette — cyan-shifted to match QuantumBridge brand
 const P = {
-  bg: "#020a04",
-  deep: "#031108",
-  green: "#7CFFB2",
-  greenDim: "#3ddc84",
-  greenDark: "#0f3a22",
+  bg: "#020812",
+  deep: "#04101a",
+  green: "#67e8f9",
+  greenDim: "#22d3ee",
+  greenDark: "#0a2233",
   amber: "#ffb347",
   red: "#ff5c6c",
-  scan: "rgba(124,255,178,0.08)",
+  scan: "rgba(103,232,249,0.08)",
 };
 
 function Flicker({ children, intensity = 0.06 }: { children: React.ReactNode; intensity?: number }) {
@@ -297,7 +297,7 @@ export default function QuantumDefenseConsole() {
     <section
       className="relative overflow-hidden py-24 md:py-32"
       style={{
-        background: `radial-gradient(1200px 700px at 50% 50%, #04140a, ${P.bg} 70%)`,
+        background: `radial-gradient(1200px 700px at 50% 50%, #04101a, ${P.bg} 70%)`,
       }}
     >
       {/* ambient bloom */}
@@ -350,7 +350,7 @@ export default function QuantumDefenseConsole() {
           <div
             className="relative rounded-2xl p-3 md:p-4"
             style={{
-              background: `linear-gradient(180deg, #0a1a10, #04100a)`,
+              background: `linear-gradient(180deg, #0a1a2a, #04101a)`,
               border: `1px solid ${P.green}55`,
               boxShadow: `0 40px 120px ${P.green}22, 0 0 60px ${P.green}1a, inset 0 1px 0 ${P.green}22`,
             }}
@@ -359,7 +359,7 @@ export default function QuantumDefenseConsole() {
             <div
               className="flex items-center justify-between px-4 py-2 mb-3 rounded-md font-mono text-[10px] tracking-[0.25em]"
               style={{
-                background: `linear-gradient(180deg, #051710, #02100a)`,
+                background: `linear-gradient(180deg, #05172a, #021014)`,
                 border: `1px solid ${P.green}33`,
                 color: P.green,
                 textShadow: `0 0 6px ${P.green}`,
@@ -628,7 +628,7 @@ export default function QuantumDefenseConsole() {
             <div
               className="mt-3 px-4 py-2 rounded-md font-mono text-[10px] tracking-[0.25em] flex items-center justify-between"
               style={{
-                background: `linear-gradient(180deg, #051710, #02100a)`,
+                background: `linear-gradient(180deg, #05172a, #021014)`,
                 border: `1px solid ${P.green}33`,
                 color: `${P.green}cc`,
               }}

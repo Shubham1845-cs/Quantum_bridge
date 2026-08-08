@@ -134,10 +134,14 @@ export default function RotaryTimeline() {
   return (
     <div
       ref={containerRef}
-      className="relative min-h-screen w-full overflow-hidden bg-[#0a0a0a] text-white font-sans"
+      className="relative min-h-screen w-full overflow-hidden text-white font-sans"
+      style={{
+        background:
+          "radial-gradient(ellipse 70% 55% at 50% 45%, rgba(103,232,249,0.08), transparent 70%), linear-gradient(180deg, rgba(5,2,15,0.92) 0%, rgba(10,5,20,0.96) 100%)",
+      }}
     >
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute right-[-10%] top-1/2 h-[900px] w-[900px] -translate-y-1/2 rounded-full bg-amber-500/[0.06] blur-3xl" />
+        <div className="absolute right-[-10%] top-1/2 h-[900px] w-[900px] -translate-y-1/2 rounded-full bg-[#c084fc]/[0.06] blur-3xl" />
       </div>
 
       <div className="relative mx-auto flex min-h-screen max-w-7xl items-center px-10">
@@ -151,16 +155,16 @@ export default function RotaryTimeline() {
               exit={{ opacity: 0, y: -16, filter: "blur(8px)" }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="mb-10 inline-flex items-center gap-2.5 rounded-full bg-amber-500/10 px-3 py-1.5 ring-1 ring-amber-500/30">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500">
+              <div className="mb-10 inline-flex items-center gap-2.5 rounded-full bg-cyan-400/10 px-3 py-1.5 ring-1 ring-cyan-400/30">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-cyan-400">
                   <active.Icon className="h-2.5 w-2.5 text-black" />
                 </span>
-                <span className="font-mono text-xs font-medium text-amber-400">
+                <span className="font-mono text-xs font-medium text-cyan-300">
                   {active.year}
                 </span>
               </div>
 
-              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-500/90">
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300/90">
                 {active.eyebrow}
               </div>
               <h1 className="mb-5 text-5xl font-semibold tracking-tight text-white">
@@ -292,9 +296,9 @@ function Pill({
       >
         <motion.div
           animate={{
-            backgroundColor: isActive ? "rgb(245, 158, 11)" : "rgba(255,255,255,0.06)",
+            backgroundColor: isActive ? "rgb(103, 232, 249)" : "rgba(255,255,255,0.06)",
             boxShadow: isActive
-              ? "0 0 28px rgba(245,158,11,0.55)"
+              ? "0 0 28px rgba(103,232,249,0.55)"
               : "0 0 0 rgba(0,0,0,0)",
           }}
           transition={{ duration: 0.3 }}
@@ -307,7 +311,7 @@ function Pill({
         <div className="flex flex-col text-left leading-tight">
           <span
             className={`font-mono text-[10px] tracking-wider ${
-              isActive ? "text-amber-400" : "text-white/40"
+              isActive ? "text-cyan-300" : "text-white/40"
             }`}
           >
             {item.year}
@@ -346,7 +350,7 @@ function Tick({
     const ab = Math.abs(a);
     return Math.min(ab, 180 - ab);
   });
-  // Distance to LEFT apex only (where pills live) — drives the amber accent
+  // Distance to LEFT apex only (where pills live) — drives the cyan accent
   const leftDist = useTransform(effectiveAngle, (a) => Math.abs(180 - Math.abs(a)));
 
   const scaleY = useTransform(apexDist, (d) => {
@@ -358,8 +362,8 @@ function Tick({
     return Math.max(0.15, 1 - d / 70);
   });
   const bg = useTransform(leftDist, (d) => {
-    if (d < 8) return "rgb(245, 158, 11)";
-    if (d < 22) return "rgba(245, 158, 11, 0.7)";
+    if (d < 8) return "rgb(103, 232, 249)";
+    if (d < 22) return "rgba(103, 232, 249, 0.7)";
     if (d < 45) return "rgba(255,255,255,0.55)";
     return "rgba(255,255,255,0.3)";
   });

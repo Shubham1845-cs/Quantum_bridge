@@ -1,41 +1,69 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Copy, CheckCheck, AlertTriangle, KeyRound, FileCode2, ExternalLink } from 'lucide-react';
 import { listEndpoints } from '../../api/endpoints';
 import { getOrg } from '../../api/orgs';
 import { useToast } from '../../hooks/useToast';
+import { useAuth } from '../../context/AuthContext';
 import { copyToClipboard } from '../../lib/utils';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Card } from '../../components/ui/Card';
+import { cn } from '../../lib/utils';
 
 type Language = 'nodejs' | 'python' | 'curl';
+
+function CodeBlock({ code, onCopy, copied }: { code: string; onCopy: () => void; copied: boolean }) {
+  return (
+    <div className="relative">
+      <pre className="overflow-x-auto rounded-xl border border-white/10 bg-black/50 p-4 font-mono-qb text-xs leading-relaxed text-white/80">
+        {code}
+      </pre>
+      <button
+        onClick={onCopy}
+        className="absolute right-3 top-3 rounded-lg border border-white/10 bg-white/5 p-2 text-white/55 transition-colors hover:bg-white/10 hover:text-white"
+        aria-label="Copy code"
+      >
+        {copied ? <CheckCheck size={14} className="text-qb-emerald" /> : <Copy size={14} />}
+      </button>
+    </div>
+  );
+}
 
 export default function DocsPage() {
   const { orgId } = useParams<{ orgId: string }>();
   const toast = useToast();
+  const { loading: authLoading } = useAuth();
   const [selectedLang, setSelectedLang] = useState<Language>('nodejs');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const { data: org } = useQuery({
     queryKey: ['org', orgId],
     queryFn: () => getOrg(orgId!),
-    enabled: !!orgId,
+    enabled: !!orgId && !authLoading,
   });
 
   const { data: endpoints } = useQuery({
     queryKey: ['endpoints', orgId],
     queryFn: () => listEndpoints(orgId!),
-    enabled: !!orgId,
+    enabled: !!orgId && !authLoading,
   });
 
   const firstEndpoint = endpoints?.[0];
   const proxyUrl = firstEndpoint
     ? `https://proxy.quantumbridge.io/${org?.slug}/${firstEndpoint.proxySlug}`
     : 'https://proxy.quantumbridge.io/your-org/your-endpoint';
-  const apiKey = 'your-api-key-here';
+  const apiKeyNote = firstEndpoint
+    ? '__YOUR_API_KEY__  ← Generate via endpoint "Regenerate API key"'
+    : '__YOUR_API_KEY__  ← Create an endpoint first to get your API key';
 
-  const handleCopy = async (code: string) => {
+  const handleCopy = async (code: string, key: string) => {
     const success = await copyToClipboard(code);
     if (success) {
+      setCopiedKey(key);
       toast.success('Code copied to clipboard');
+      setTimeout(() => setCopiedKey(null), 1800);
     }
   };
 
@@ -44,21 +72,22 @@ export default function DocsPage() {
       makeRequest: `const axios = require('axios');
 
 const proxyUrl = '${proxyUrl}';
-const apiKey = '${apiKey}';
+const apiKey = '${apiKeyNote}';
 
 async function makeRequest() {
   try {
     const response = await axios.get(proxyUrl + '/your-path', {
       headers: {
-        'X-API-Key': apiKey,
+        'Authorization': \`Bearer $\{apiKey}\`,
         'Content-Type': 'application/json'
       }
     });
 
     console.log('Response:', response.data);
-    console.log('ECDSA Signature:', response.headers['x-ecdsa-signature']);
-    console.log('ML-DSA Signature:', response.headers['x-dilithium-signature']);
-    
+    console.log('ECDSA Signature:', response.headers['x-qb-ecdsa-sig']);
+    console.log('ML-DSA Signature:', response.headers['x-qb-dilithium-sig']);
+    console.log('Key Version:', response.headers['x-qb-key-version']);
+
     return response.data;
   } catch (error) {
     console.error('Request failed:', error.message);
@@ -73,7 +102,7 @@ function verifyECDSA(data, signature, publicKey) {
   const verify = crypto.createVerify('SHA256');
   verify.update(data);
   verify.end();
-  
+
   return verify.verify(
     {
       key: publicKey,
@@ -87,7 +116,7 @@ function verifyECDSA(data, signature, publicKey) {
 
 // Get public keys from /org/:orgId/keys endpoint
 const ecdsaPublicKey = '-----BEGIN PUBLIC KEY-----\\n...\\n-----END PUBLIC KEY-----';
-const signature = response.headers['x-ecdsa-signature'];
+const signature = response.headers['x-qb-ecdsa-sig'];
 const responseBody = JSON.stringify(response.data);
 
 const isValid = verifyECDSA(responseBody, signature, ecdsaPublicKey);
@@ -97,25 +126,26 @@ console.log('ECDSA signature valid:', isValid);`,
       makeRequest: `import requests
 
 proxy_url = '${proxyUrl}'
-api_key = '${apiKey}'
+api_key = '${apiKeyNote}'
 
 def make_request():
     headers = {
-        'X-API-Key': api_key,
+        'Authorization': f'Bearer {api_key}',
         'Content-Type': 'application/json'
     }
-    
+
     try:
         response = requests.get(
             f'{proxy_url}/your-path',
             headers=headers
         )
         response.raise_for_status()
-        
+
         print('Response:', response.json())
-        print('ECDSA Signature:', response.headers.get('x-ecdsa-signature'))
-        print('ML-DSA Signature:', response.headers.get('x-dilithium-signature'))
-        
+        print('ECDSA Signature:', response.headers.get('x-qb-ecdsa-sig'))
+        print('ML-DSA Signature:', response.headers.get('x-qb-dilithium-sig'))
+        print('Key Version:', response.headers.get('x-qb-key-version'))
+
         return response.json()
     except requests.exceptions.RequestException as e:
         print(f'Request failed: {e}')
@@ -130,15 +160,10 @@ import json
 
 def verify_ecdsa(data: bytes, signature: str, public_key_pem: str) -> bool:
     try:
-        # Load public key
         public_key = serialization.load_pem_public_key(
             public_key_pem.encode()
         )
-        
-        # Decode signature from base64
         sig_bytes = base64.b64decode(signature)
-        
-        # Verify signature
         public_key.verify(
             sig_bytes,
             data,
@@ -148,12 +173,11 @@ def verify_ecdsa(data: bytes, signature: str, public_key_pem: str) -> bool:
     except InvalidSignature:
         return False
 
-# Get public keys from /org/:orgId/keys endpoint
 ecdsa_public_key = """-----BEGIN PUBLIC KEY-----
 ...
 -----END PUBLIC KEY-----"""
 
-signature = response.headers.get('x-ecdsa-signature')
+signature = response.headers.get('x-qb-ecdsa-sig')
 response_body = json.dumps(response.json()).encode()
 
 is_valid = verify_ecdsa(response_body, signature, ecdsa_public_key)
@@ -161,170 +185,139 @@ print(f'ECDSA signature valid: {is_valid}')`,
     },
     curl: {
       makeRequest: `curl -X GET '${proxyUrl}/your-path' \\
-  -H 'X-API-Key: ${apiKey}' \\
+  -H 'Authorization: Bearer ${apiKeyNote}' \\
   -H 'Content-Type: application/json' \\
   -i
 
 # Response headers will include:
-# x-ecdsa-signature: <base64-encoded-signature>
-# x-dilithium-signature: <base64-encoded-signature>
-# x-key-version: <version-number>`,
+# x-qb-ecdsa-sig: <base64-encoded-signature>
+# x-qb-dilithium-sig: <base64-encoded-signature>
+# x-qb-key-version: <version-number>
+# qb-encrypted: 1 (response is AES-256-GCM encrypted)`,
       verifySignatures: `# Get public keys
 curl -X GET 'https://api.quantumbridge.io/orgs/:orgId/keys' \\
   -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
 
 # Save response body to file
 curl -X GET '${proxyUrl}/your-path' \\
-  -H 'X-API-Key: ${apiKey}' \\
+  -H 'Authorization: Bearer ${apiKeyNote}' \\
   -D headers.txt \\
   -o response.json
 
-# Extract signature from headers
-SIGNATURE=$(grep -i 'x-ecdsa-signature' headers.txt | cut -d' ' -f2)
-
 # Verify using OpenSSL (requires public key in PEM format)
+SIGNATURE=$(grep -i 'x-qb-ecdsa-sig' headers.txt | cut -d' ' -f2)
 echo -n "$(cat response.json)" | \\
   openssl dgst -sha256 -verify public_key.pem \\
   -signature <(echo "$SIGNATURE" | base64 -d)`,
     },
   };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold tracking-tight mb-1">Documentation</h2>
-        <p className="text-white/40 text-sm">
-          Integration guides and code examples for QuantumBridge
-        </p>
-      </div>
+  const langTab: Record<Language, string> = { nodejs: 'Node.js', python: 'Python', curl: 'cURL' };
 
-      {/* Warning */}
-      <div className="mb-8 p-4 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
-        <div className="flex items-start gap-3">
-          <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <div>
-            <h3 className="text-yellow-400 font-medium text-sm mb-1">
-              Security Warning
-            </h3>
-            <p className="text-yellow-400/80 text-xs">
-              Never commit your API keys to version control. Use environment variables or secure secret management systems.
-            </p>
-          </div>
+  return (
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+      <PageHeader title="Documentation" description="Integration guides and code examples for QuantumBridge" />
+
+      {/* Security warning */}
+      <div className="mb-8 flex items-start gap-3 rounded-xl border border-qb-amber/20 bg-qb-amber/5 p-4">
+        <AlertTriangle className="mt-0.5 shrink-0 text-qb-amber" size={18} />
+        <div>
+          <h3 className="mb-1 text-sm font-medium text-qb-amber">Security Warning</h3>
+          <p className="text-xs text-qb-amber/80">
+            Never commit your API keys to version control. Use environment variables or secure secret management systems.
+          </p>
         </div>
       </div>
 
-      {/* Language Selector */}
-      <div className="flex gap-2 mb-6">
+      {/* Language tabs */}
+      <div className="mb-6 flex gap-2">
         {(['nodejs', 'python', 'curl'] as Language[]).map((lang) => (
           <button
             key={lang}
             onClick={() => setSelectedLang(lang)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={cn(
+              'flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
               selectedLang === lang
-                ? 'bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30'
-                : 'bg-white/[0.02] text-white/60 border border-white/10 hover:bg-white/[0.04]'
-            }`}
+                ? 'border border-qb-cyan/30 bg-qb-cyan/10 text-qb-cyan'
+                : 'border border-white/10 bg-white/[0.02] text-white/55 hover:bg-white/[0.05] hover:text-white',
+            )}
           >
-            {lang === 'nodejs' ? 'Node.js' : lang === 'python' ? 'Python' : 'cURL'}
+            <FileCode2 size={14} />
+            {langTab[lang]}
           </button>
         ))}
       </div>
 
       {/* Making Requests */}
       <div className="mb-8">
-        <h3 className="text-lg font-bold mb-4">Making Requests</h3>
-        <div className="relative">
-          <pre className="p-4 rounded-xl bg-black/40 border border-white/10 overflow-x-auto text-xs text-white/80 font-mono">
-            {codeExamples[selectedLang].makeRequest}
-          </pre>
-          <button
-            onClick={() => handleCopy(codeExamples[selectedLang].makeRequest)}
-            className="absolute top-3 right-3 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs transition-colors"
-          >
-            Copy
-          </button>
-        </div>
+        <h3 className="mb-4 text-lg font-bold">Making Requests</h3>
+        <CodeBlock
+          code={codeExamples[selectedLang].makeRequest}
+          onCopy={() => handleCopy(codeExamples[selectedLang].makeRequest, 'make')}
+          copied={copiedKey === 'make'}
+        />
       </div>
 
       {/* Verifying Signatures */}
       <div className="mb-8">
-        <h3 className="text-lg font-bold mb-4">Verifying Signatures</h3>
-        <p className="text-white/40 text-sm mb-4">
+        <h3 className="mb-2 text-lg font-bold">Verifying Signatures</h3>
+        <p className="mb-4 text-sm text-white/40">
           All responses include dual signatures (ECDSA P-256 and ML-DSA-65) in the response headers.
-          Verify these signatures to ensure response integrity.
+          Verify them to ensure response integrity.
         </p>
-        <div className="relative">
-          <pre className="p-4 rounded-xl bg-black/40 border border-white/10 overflow-x-auto text-xs text-white/80 font-mono">
-            {codeExamples[selectedLang].verifySignatures}
-          </pre>
-          <button
-            onClick={() => handleCopy(codeExamples[selectedLang].verifySignatures)}
-            className="absolute top-3 right-3 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs transition-colors"
-          >
-            Copy
-          </button>
-        </div>
+        <CodeBlock
+          code={codeExamples[selectedLang].verifySignatures}
+          onCopy={() => handleCopy(codeExamples[selectedLang].verifySignatures, 'verify')}
+          copied={copiedKey === 'verify'}
+        />
       </div>
 
-      {/* Key Information */}
-      <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-        <h3 className="text-lg font-bold mb-4">Key Information</h3>
+      {/* Reference */}
+      <Card className="mb-8 p-6">
+        <h3 className="mb-4 text-lg font-bold">Key Information</h3>
         <div className="space-y-4 text-sm">
           <div>
-            <h4 className="text-white/60 mb-2">Proxy URL</h4>
-            <code className="block p-3 rounded-lg bg-black/40 border border-white/10 text-cyber-cyan font-mono text-xs">
-              {proxyUrl}
+            <h4 className="mb-2 text-white/60">Proxy URL</h4>
+            <code className="block rounded-lg border border-white/10 bg-black/40 p-3 font-mono-qb text-xs text-qb-cyan">{proxyUrl}</code>
+          </div>
+          <div>
+            <h4 className="mb-2 text-white/60">Auth Header</h4>
+            <code className="block rounded-lg border border-white/10 bg-black/40 p-3 font-mono-qb text-xs text-white/80">
+              Authorization: Bearer {apiKeyNote}
             </code>
           </div>
           <div>
-            <h4 className="text-white/60 mb-2">API Key Header</h4>
-            <code className="block p-3 rounded-lg bg-black/40 border border-white/10 text-white/80 font-mono text-xs">
-              X-API-Key: {apiKey}
-            </code>
-          </div>
-          <div>
-            <h4 className="text-white/60 mb-2">Response Headers</h4>
-            <ul className="space-y-2 text-white/60 text-xs">
-              <li>• <code className="text-cyber-cyan">x-ecdsa-signature</code> - ECDSA P-256 signature (base64)</li>
-              <li>• <code className="text-cyber-cyan">x-dilithium-signature</code> - ML-DSA-65 signature (base64)</li>
-              <li>• <code className="text-cyber-cyan">x-key-version</code> - Key version used for signing</li>
+            <h4 className="mb-2 text-white/60">Response Headers</h4>
+            <ul className="space-y-1.5 text-xs text-white/55">
+              <li>• <code className="text-qb-cyan">QB-Encrypted</code> — "1" when response is AES-256-GCM encrypted</li>
+              <li>• <code className="text-qb-cyan">X-QB-ECDSA-Sig</code> — ECDSA P-256 signature (base64)</li>
+              <li>• <code className="text-qb-cyan">X-QB-Dilithium-Sig</code> — ML-DSA-65 signature (base64)</li>
+              <li>• <code className="text-qb-cyan">X-QB-Key-Version</code> — Key version used for signing</li>
+              <li>• <code className="text-qb-cyan">X-QB-IV</code> — AES-256-GCM IV (base64, when encrypted)</li>
             </ul>
           </div>
         </div>
-      </div>
+      </Card>
 
-      {/* Additional Resources */}
-      <div className="mt-8 p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-        <h3 className="text-lg font-bold mb-4">Additional Resources</h3>
+      {/* Resources */}
+      <Card className="p-6">
+        <h3 className="mb-4 text-lg font-bold">Additional Resources</h3>
         <div className="space-y-3 text-sm">
           <a
             href="https://github.com/quantumbridge/examples"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 text-cyber-cyan hover:text-cyber-cyan/80 transition-colors"
+            className="flex items-center gap-2 text-qb-cyan transition-colors hover:text-qb-cyan/80"
           >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-            </svg>
+            <ExternalLink size={16} />
             View example projects on GitHub
           </a>
-          <a
-            href="/org/${orgId}/keys"
-            className="flex items-center gap-2 text-cyber-cyan hover:text-cyber-cyan/80 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-            </svg>
+          <Link to={`/org/${orgId}/keys`} className="flex items-center gap-2 text-qb-cyan transition-colors hover:text-qb-cyan/80">
+            <KeyRound size={16} />
             View your organization's public keys
-          </a>
+          </Link>
         </div>
-      </div>
+      </Card>
     </motion.div>
   );
 }

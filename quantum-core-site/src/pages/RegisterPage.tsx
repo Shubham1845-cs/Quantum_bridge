@@ -29,8 +29,11 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
+      // Registration creates the account but does NOT log in — email verification
+      // is required first. Send the user to the /verify-email interstitial with
+      // their email pre-filled so they can resend / confirm.
       await register(email, password);
-      navigate("/dashboard", { replace: true });
+      navigate(`/verify-email?email=${encodeURIComponent(email)}`, { replace: true });
     } catch (err: any) {
       setError(err.message || "Registration failed");
     } finally {

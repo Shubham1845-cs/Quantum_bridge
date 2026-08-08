@@ -22,7 +22,6 @@ import { useAuth } from "../context/AuthContext";
 import GlobalAtmosphere from "../components/landing/GlobalAtmosphere";
 import QuantumAtmosphere from "../components/landing/QuantumAtmosphere";
 import SeamlessVideoLoop from "../components/landing/SeamlessVideoLoop";
-import SectionBridge from "../components/landing/SectionBridge";
 import MetricCard from "../components/landing/MetricCard";
 import UICard3D from "../components/landing/UICard3D";
 import QuantumDefenseConsole from "../components/landing/QuantumDefenseConsole";
@@ -558,16 +557,10 @@ const HomePage = () => {
         <QuantumDefenseConsole />
       </div>
 
-      {/* Section Bridge */}
-      <SectionBridge height={160} from="rgba(192,132,252,0.10)" to="rgba(103,232,249,0.10)" />
-
       {/* Pricing */}
       <div id="plans">
         <QuantumPricing />
       </div>
-
-      {/* Section Bridge */}
-      <SectionBridge height={160} from="rgba(103,232,249,0.10)" to="rgba(192,132,252,0.10)" />
 
       {/* News Section */}
       <NewsSection />

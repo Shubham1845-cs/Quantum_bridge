@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEndpoint, regenerateApiKey, deleteEndpoint } from "../api/endpoints";
 import { useToast } from "../hooks/useToast";
+import { useAuth } from "../context/AuthContext";
 import { copyToClipboard } from "../lib/utils";
 
 export default function EndpointDetailPage() {
@@ -11,6 +12,7 @@ export default function EndpointDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { loading: authLoading } = useAuth();
 
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [showKey, setShowKey] = useState(false);
@@ -24,7 +26,7 @@ export default function EndpointDetailPage() {
   const { data: endpoint, isLoading } = useQuery({
     queryKey: ["endpoints", orgId, endpointId],
     queryFn: () => getEndpoint(orgId!, endpointId!),
-    enabled: !!orgId && !!endpointId,
+    enabled: !!orgId && !!endpointId && !authLoading,
   });
 
   const regenMut = useMutation({
@@ -239,35 +241,7 @@ export default function EndpointDetailPage() {
             >
               {regenMut.isPending ? "..." : "Regenerate API key"}
             </button>
-
-            {apiKey && showKey && (
-              <div className="mt-4 p-3 rounded-lg bg-cyber-cyan/5 border border-cyber-cyan/20">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-cyber-cyan text-xs font-medium">API Key</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleCopyKey}
-                      className="px-2 py-1 rounded bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan text-[10px] hover:bg-cyber-cyan/20 transition-colors"
-                    >
-                      Copy
-                    </button>
-                    <button
-                      onClick={() => { setShowKey(false); setApiKey(null); }}
-                      className="px-2 py-1 rounded bg-white/5 border border-white/10 text-white/40 text-[10px] hover:text-white/60 transition-colors"
-                    >
-                      Hide
-                    </button>
-                  </div>
-                </div>
-                <code className="block text-[10px] text-white/80 font-mono break-all select-all">
-                  {apiKey}
-                </code>
-                <p className="mt-1 text-white/30 text-[9px]">
-                  This key is shown once. Copy it now — it cannot be retrieved later.
-                </p>
-              </div>
-            )}
-            <button 
+            <button
               onClick={() => {
                 if (confirm("Are you sure you want to delete this endpoint?")) {
                   delMut.mutate();
@@ -279,6 +253,34 @@ export default function EndpointDetailPage() {
               {delMut.isPending ? "..." : "Delete endpoint"}
             </button>
           </div>
+
+          {apiKey && showKey && (
+            <div className="mt-4 p-3 rounded-lg bg-cyber-cyan/5 border border-cyber-cyan/20">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-cyber-cyan text-xs font-medium">API Key</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCopyKey}
+                    className="px-2 py-1 rounded bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan text-[10px] hover:bg-cyber-cyan/20 transition-colors"
+                  >
+                    Copy
+                  </button>
+                  <button
+                    onClick={() => { setShowKey(false); setApiKey(null); }}
+                    className="px-2 py-1 rounded bg-white/5 border border-white/10 text-white/40 text-[10px] hover:text-white/60 transition-colors"
+                  >
+                    Hide
+                  </button>
+                </div>
+              </div>
+              <code className="block text-[10px] text-white/80 font-mono break-all select-all">
+                {apiKey}
+              </code>
+              <p className="mt-1 text-white/30 text-[9px]">
+                This key is shown once. Copy it now — it cannot be retrieved later.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

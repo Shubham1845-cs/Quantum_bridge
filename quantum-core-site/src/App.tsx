@@ -9,8 +9,8 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const VerifyEmailPage = lazy(() => import('./pages/auth/VerifyEmailPage'));
-const ThreatAnalysisDashboard = lazy(() => import('./pages/ThreatAnalysisDashboard'));
-const OrgLayout = lazy(() => import('./components/OrgLayout'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const OrgLayout = lazy(() => import('./components/layout/OrgLayout'));
 const OrgOverviewPage = lazy(() => import('./pages/OrgOverviewPage'));
 const EndpointsPage = lazy(() => import('./pages/EndpointsPage'));
 const EndpointDetailPage = lazy(() => import('./pages/EndpointDetailPage'));
@@ -49,7 +49,7 @@ export default function App() {
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <ThreatAnalysisDashboard />
+                  <DashboardPage />
                 </ProtectedRoute>
               }
             />
@@ -57,7 +57,7 @@ export default function App() {
               path="/dashboard/:section"
               element={
                 <ProtectedRoute>
-                  <ThreatAnalysisDashboard />
+                  <DashboardPage />
                 </ProtectedRoute>
               }
             />

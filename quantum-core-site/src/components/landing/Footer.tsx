@@ -1,3 +1,5 @@
+import { useState, type FormEvent } from 'react';
+import toast from 'react-hot-toast';
 import {
   Mail,
   MapPin,
@@ -83,6 +85,25 @@ const Logo = () => (
 );
 
 export default function Footer() {
+  const [email, setEmail] = useState('');
+
+  // ponytail: no backend newsletter endpoint exists — client-side acknowledgement only.
+  // Add a POST /newsletter/subscribe endpoint + persistence when real subscriptions are needed.
+  const handleSubscribe = (e: FormEvent) => {
+    e.preventDefault();
+    const value = email.trim();
+    if (!value) {
+      toast.error('Please enter your email');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    toast.success('Subscribed! Watch your inbox for quantum-safe updates.');
+    setEmail('');
+  };
+
   return (
     <footer className="relative bg-gradient-to-b from-[rgba(10,5,20,0.95)] to-black backdrop-blur-sm overflow-hidden -mt-16">
       {/* Background effects */}
@@ -90,7 +111,7 @@ export default function Footer() {
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[900px] h-[400px] rounded-full opacity-[0.03] blur-[150px] bg-gradient-to-br from-cyber-cyan to-neon-purple" />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-7xl px-6 pt-32 pb-6 sm:px-8 lg:px-8 lg:pt-40">
+      <div className="relative z-10 mx-auto max-w-7xl px-6 pt-16 pb-6 sm:px-8 lg:px-8 lg:pt-24">
         {/* Smooth gradient blend from Help section */}
         <div 
           className="absolute top-0 left-0 right-0 h-32 pointer-events-none"
@@ -108,16 +129,19 @@ export default function Footer() {
             <p className="text-white/60 mb-6 max-w-md">
               Join thousands of professionals who trust QuantumBridge for quantum-safe API protection.
             </p>
-            <div className="flex gap-3 max-w-md">
+            <form onSubmit={handleSubscribe} className="flex gap-3 max-w-md">
               <input
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
+                aria-label="Email address"
                 className="flex-1 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm placeholder-white/40 focus:outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/25 transition-all"
               />
-              <button className="px-6 py-3 rounded-lg font-semibold text-black bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 transition-all">
+              <button type="submit" className="px-6 py-3 rounded-lg font-semibold text-black bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 transition-all">
                 Subscribe
               </button>
-            </div>
+            </form>
           </div>
 
           {/* Video Card */}

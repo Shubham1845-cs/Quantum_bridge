@@ -2,17 +2,23 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { listWebhooks, createWebhook, deleteWebhook, type Webhook } from '../../api/webhooks';
+import { Webhook, Bell, Trash2, AlertTriangle } from 'lucide-react';
+import { listWebhooks, createWebhook, deleteWebhook, type Webhook as WebhookT } from '../../api/webhooks';
 import { useToast } from '../../hooks/useToast';
+import { useAuth } from '../../context/AuthContext';
+import { formatDateTime } from '../../lib/utils';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Card } from '../../components/ui/Card';
+import { Modal } from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { formatDateTime } from '../../lib/utils';
 
 export default function WebhooksPage() {
   const { orgId } = useParams<{ orgId: string }>();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { loading: authLoading } = useAuth();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newWebhookUrl, setNewWebhookUrl] = useState('');
@@ -22,7 +28,7 @@ export default function WebhooksPage() {
   const { data: webhooks, isLoading } = useQuery({
     queryKey: ['webhooks', orgId],
     queryFn: () => listWebhooks(orgId!),
-    enabled: !!orgId,
+    enabled: !!orgId && !authLoading,
   });
 
   const createMutation = useMutation({
@@ -36,12 +42,10 @@ export default function WebhooksPage() {
     },
     onError: (err: any) => {
       const status = err.response?.status;
-      const message = err.response?.data?.error;
-      
       if (status === 422) {
         setCreateError('Webhook URL must be a valid HTTPS endpoint.');
       } else {
-        setCreateError(message || 'Failed to create webhook');
+        setCreateError(err.response?.data?.error || 'Failed to create webhook');
       }
     },
   });
@@ -65,7 +69,7 @@ export default function WebhooksPage() {
     createMutation.mutate(newWebhookUrl);
   };
 
-  const handleDelete = (webhook: Webhook) => {
+  const handleDelete = (webhook: WebhookT) => {
     if (window.confirm(`Are you sure you want to delete this webhook?\n\n${webhook.url}`)) {
       setDeletingId(webhook._id);
       deleteMutation.mutate(webhook._id);
@@ -73,71 +77,48 @@ export default function WebhooksPage() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight mb-1">Webhooks</h2>
-          <p className="text-white/40 text-sm">
-            Configure HTTPS endpoints to receive automated threat alerts
-          </p>
-        </div>
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          variant="primary"
-          size="sm"
-        >
-          + Add Webhook
-        </Button>
-      </div>
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+      <PageHeader
+        title="Webhooks"
+        description="Configure HTTPS endpoints to receive automated threat alerts"
+        actions={
+          <Button onClick={() => setShowCreateModal(true)} variant="primary" size="sm">
+            <Bell size={15} className="mr-1.5" />
+            Add Webhook
+          </Button>
+        }
+      />
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <LoadingSpinner size="lg" />
         </div>
       ) : webhooks?.length === 0 ? (
-        <div className="p-8 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-          <div className="text-4xl mb-4">🔔</div>
-          <p className="text-white/40 text-sm mb-4">
-            No webhooks configured yet
-          </p>
-          <p className="text-white/30 text-xs mb-6">
-            Webhooks allow you to receive real-time notifications when threats are detected
-          </p>
-          <Button onClick={() => setShowCreateModal(true)} variant="primary">
-            Add Your First Webhook
-          </Button>
-        </div>
+        <Card className="p-16 text-center">
+          <Webhook className="mx-auto mb-4 text-white/20" size={32} />
+          <p className="mb-1 text-sm text-white/50">No webhooks configured yet</p>
+          <p className="mb-6 text-xs text-white/30">Receive real-time notifications when threats are detected.</p>
+          <Button onClick={() => setShowCreateModal(true)} variant="primary">Add Your First Webhook</Button>
+        </Card>
       ) : (
         <div className="space-y-4">
           {webhooks?.map((webhook) => (
-            <div
-              key={webhook._id}
-              className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:border-white/10 transition-colors"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-white font-medium truncate">
-                      {webhook.url}
-                    </h3>
-                    <Badge
-                      variant={webhook.status === 'active' ? 'success' : 'danger'}
-                    >
+            <Card key={webhook._id} variant="interactive" className="p-6">
+              <div className="mb-4 flex items-start justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-qb-cyan/20 bg-qb-cyan/5 text-qb-cyan">
+                      <Webhook size={16} />
+                    </div>
+                    <h3 className="truncate font-medium text-white">{webhook.url}</h3>
+                    <Badge variant={webhook.status === 'active' ? 'success' : 'danger'}>
                       {webhook.status === 'active' ? 'Active' : 'Failed'}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-white/40">
-                    <span>
-                      Created {new Date(webhook.createdAt).toLocaleDateString()}
-                    </span>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/40">
+                    <span>Created {new Date(webhook.createdAt).toLocaleDateString()}</span>
                     {webhook.lastDeliveryAt && (
-                      <span>
-                        Last delivery: {formatDateTime(webhook.lastDeliveryAt)}
-                      </span>
+                      <span>Last delivery: {formatDateTime(webhook.lastDeliveryAt)}</span>
                     )}
                   </div>
                 </div>
@@ -145,87 +126,73 @@ export default function WebhooksPage() {
                   onClick={() => handleDelete(webhook)}
                   variant="danger"
                   size="sm"
-                  isLoading={deletingId === webhook._id}
                   disabled={deletingId !== null}
                 >
-                  Delete
+                  <Trash2 size={13} className="mr-1.5" />
+                  {deletingId === webhook._id ? 'Deleting…' : 'Delete'}
                 </Button>
               </div>
 
               {webhook.status === 'failed' && (
-                <div className="mt-4 p-3 rounded-lg bg-red-500/5 border border-red-500/20 text-red-400 text-xs">
-                  ⚠️ This webhook is currently failing. Check your endpoint configuration.
+                <div className="mt-4 flex items-center gap-2 rounded-lg border border-qb-rose/20 bg-qb-rose/5 p-3 text-xs text-qb-rose">
+                  <AlertTriangle size={14} />
+                  This webhook is currently failing. Check your endpoint configuration.
                 </div>
               )}
-            </div>
+            </Card>
           ))}
         </div>
       )}
 
       {/* Create Webhook Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-[#111111] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl"
-          >
-            <h3 className="text-xl font-bold mb-2">Add Webhook</h3>
-            <p className="text-white/40 text-xs mb-6">
-              Enter an HTTPS endpoint to receive threat notifications
-            </p>
-
-            {createError && (
-              <div className="mb-4 text-red-400 text-sm bg-red-400/10 p-3 rounded-lg border border-red-500/20">
-                {createError}
-              </div>
-            )}
-
-            <form onSubmit={handleCreate}>
-              <div className="mb-6">
-                <label className="block text-white/60 text-xs mb-2">
-                  Webhook URL
-                </label>
-                <input
-                  type="url"
-                  required
-                  value={newWebhookUrl}
-                  onChange={(e) => setNewWebhookUrl(e.target.value)}
-                  className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white placeholder-white/20 focus:border-cyber-cyan focus:outline-none transition-colors"
-                  placeholder="https://your-domain.com/webhooks/quantumbridge"
-                  autoFocus
-                />
-                <p className="mt-2 text-white/30 text-xs">
-                  Must be a valid HTTPS URL
-                </p>
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setCreateError('');
-                    setNewWebhookUrl('');
-                  }}
-                  variant="secondary"
-                  size="sm"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  isLoading={createMutation.isPending}
-                  disabled={!newWebhookUrl.trim() || createMutation.isPending}
-                >
-                  {createMutation.isPending ? 'Creating...' : 'Create Webhook'}
-                </Button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
+      <Modal
+        open={showCreateModal}
+        onOpenChange={(o) => {
+          setShowCreateModal(o);
+          if (!o) {
+            setNewWebhookUrl('');
+            setCreateError('');
+          }
+        }}
+        title="Add Webhook"
+        description="Enter an HTTPS endpoint to receive threat notifications"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowCreateModal(false);
+                setCreateError('');
+                setNewWebhookUrl('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" form="create-webhook-form" variant="primary" size="sm" disabled={!newWebhookUrl.trim() || createMutation.isPending}>
+              {createMutation.isPending ? 'Creating…' : 'Create Webhook'}
+            </Button>
+          </>
+        }
+      >
+        {createError && (
+          <div className="mb-4 rounded-lg border border-qb-rose/20 bg-qb-rose/5 p-3 text-sm text-qb-rose">{createError}</div>
+        )}
+        <form id="create-webhook-form" onSubmit={handleCreate} className="space-y-2">
+          <label className="block text-xs text-white/60">Webhook URL</label>
+          <input
+            type="url"
+            required
+            value={newWebhookUrl}
+            onChange={(e) => setNewWebhookUrl(e.target.value)}
+            className="qb-input-focus w-full rounded-xl border border-white/10 bg-black/40 p-3 text-sm text-white placeholder-white/20"
+            placeholder="https://your-domain.com/webhooks/quantumbridge"
+            autoFocus
+          />
+          <p className="text-xs text-white/30">Must be a valid HTTPS URL</p>
+        </form>
+      </Modal>
     </motion.div>
   );
 }

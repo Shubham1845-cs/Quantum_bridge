@@ -1,4 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Rubik:wght@700;800;900&display=swap");
 @import "tailwindcss";
 
@@ -9,13 +11,28 @@
   --color-deep-space: #05050a;
   --color-void: #080810;
 
+  /* Premium accent ramp (oklch-ish for refined gradients) */
+  --color-qb-cyan: #22d3ee;
+  --color-qb-violet: #a855f7;
+  --color-qb-emerald: #34d399;
+  --color-qb-amber: #fbbf24;
+  --color-qb-rose: #fb7185;
+  --color-qb-slate: #0b1120;
+
   /* Dashboard Custom Shadows */
   --shadow-neon-cyan: 0 0 10px #00FFFF, 0 0 20px #00FFFF;
   --shadow-neon-purple: 0 0 10px #8A2BE2, 0 0 20px #8A2BE2;
   --shadow-neon-subtle: 0 0 5px rgba(0, 255, 255, 0.25), 0 0 15px rgba(0, 255, 255, 0.12);
 
-  /* Dashboard Custom Font */
+  /* Premium elevation — soft layered shadows for depth on dark surfaces */
+  --shadow-premium-1: 0 1px 2px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-premium-2: 0 4px 12px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.35);
+  --shadow-premium-3: 0 12px 32px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-premium-glow: 0 0 0 1px rgba(34,211,238,0.08), 0 8px 30px rgba(34,211,238,0.12);
+
+  /* Dashboard Custom Fonts */
   --font-space: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
   
   /* Landing Page Radius System */
   --radius-sm: calc(var(--radius) - 4px);
@@ -157,13 +174,49 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Hide scrollbar for seamless cinematic feel */
+/* Premium ambient background — layered radial glows + fine grid.
+   Applied on org/dashboard shells for depth without flat black. */
+.qb-ambient {
+  background-color: #05050a;
+  background-image:
+    radial-gradient(60% 50% at 15% 0%, rgba(34, 211, 238, 0.06), transparent 60%),
+    radial-gradient(50% 50% at 100% 10%, rgba(168, 85, 247, 0.05), transparent 60%),
+    radial-gradient(40% 40% at 50% 100%, rgba(34, 211, 238, 0.03), transparent 60%);
+}
+
+/* Fine dotted grain overlay for premium tactile feel */
+.qb-grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.025;
+  background-image: radial-gradient(rgba(255,255,255,0.6) 0.5px, transparent 0.5px);
+  background-size: 3px 3px;
+}
+
+/* Premium scrollbar — thin, subtle, themed */
 ::-webkit-scrollbar {
-  display: none;
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34,211,238,0.25);
+  background-clip: padding-box;
 }
 * {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
 }
 
 /* Custom Selection — Cyan/Black */
@@ -214,3 +267,78 @@ body {
 .animate-scanline {
   animation: scanline 8s linear infinite;
 }
+
+/* ─── Premium utility layer ─── */
+
+/* Gradient text — cyan→violet headline accent */
+.text-gradient-premium {
+  background: linear-gradient(120deg, #ffffff 0%, #22d3ee 45%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Hairline gradient border for hero cards (mask trick) */
+.qb-hairline-border {
+  position: relative;
+}
+.qb-hairline-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(34,211,238,0.35), rgba(168,85,247,0.18) 50%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Shimmer sweep used on premium buttons / CTA hover */
+@keyframes qb-shimmer {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+.qb-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%);
+  transform: translateX(-120%);
+}
+.qb-shimmer:hover::after {
+  animation: qb-shimmer 0.9s ease-out;
+}
+
+/* Premium reveal — used by <Reveal> wrapper */
+@keyframes qb-reveal {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-qb-reveal {
+  animation: qb-reveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Subtle gradient border ring for active nav / focused cards */
+.ring-qb-accent {
+  box-shadow: 0 0 0 1px rgba(34,211,238,0.35), 0 0 24px -6px rgba(34,211,238,0.45);
+}
+
+/* Mono helper — code / keys / proxy slugs */
+.font-mono-qb {
+  font-family: var(--font-mono), monospace;
+  font-feature-settings: "ss01", "ss02";
+}
+
+/* Premium focus ring for inputs/selects */
+.qb-input-focus {
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+.qb-input-focus:focus,
+.qb-input-focus:focus-visible {
+  outline: none;
+  border-color: rgba(34,211,238,0.5);
+  box-shadow: 0 0 0 3px rgba(34,211,238,0.12), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
