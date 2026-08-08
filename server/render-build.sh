@@ -2,10 +2,10 @@
 set -e
 
 echo "==> Installing server dependencies..."
-cd server
-npm install --production=false
+npm install
 
 echo "==> Building TypeScript..."
-npm run build
+cd server
+npx tsc --project tsconfig.json
 
 echo "==> Build complete."
