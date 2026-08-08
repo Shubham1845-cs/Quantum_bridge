@@ -6,7 +6,7 @@ import logger from '../../utils/logger.js';
 import { User } from './User.js';
 import jwt from 'jsonwebtoken'
 import { v4 as uuidv4 } from 'uuid';
-import { redis } from '@server/config/redis.js';
+import { redis } from '../../config/redis.js';
 const resend = new Resend(env.RESEND_API_KEY);
 
 // ---------------------------------------------------------------------------
