@@ -4,11 +4,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "dist",
-    "rootDir": "src",
-    "paths": {
-      "@server/*": ["./src/*"],
-      "@shared/*": ["../shared/*"]
-    }
+    "rootDir": "src"
   },
   "include": ["src/**/*"],
   "exclude": [
