@@ -12,12 +12,7 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "outDir": "dist",
-    "baseUrl": ".",
-    "paths": {
-      "@server/*": ["server/src/*"],
-      "@shared/*": ["shared/*"]
-    }
+    "outDir": "dist"
   },
   "exclude": ["node_modules", "dist", "**/dist"]
 }
