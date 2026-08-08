@@ -1,0 +1,217 @@
+import { useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Network, Plus, ArrowRight } from "lucide-react";
+import { listEndpoints, createEndpoint, type CreateEndpointResponse } from "../api/endpoints";
+import { useToast } from "../hooks/useToast";
+import { useAuth } from "../context/AuthContext";
+import { copyToClipboard } from "../lib/utils";
+import { PageHeader } from "../components/ui/PageHeader";
+import { Card } from "../components/ui/Card";
+import { Modal } from "../components/ui/Modal";
+import Button from "../components/ui/Button";
+import { cn } from "../lib/utils";
+
+export default function EndpointsPage() {
+  const { orgId } = useParams<{ orgId: string }>();
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const { loading: authLoading } = useAuth();
+  const [showModal, setShowModal] = useState(false);
+  const [newTarget, setNewTarget] = useState("");
+  const [newName, setNewName] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [createdData, setCreatedData] = useState<CreateEndpointResponse | null>(null);
+
+  const { data: endpoints, isLoading } = useQuery({
+    queryKey: ["endpoints", orgId],
+    queryFn: () => listEndpoints(orgId!),
+    enabled: !!orgId && !authLoading,
+  });
+
+  const createMut = useMutation({
+    mutationFn: () => createEndpoint(orgId!, { name: newName, targetUrl: newTarget }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["endpoints", orgId] });
+      setShowModal(false);
+      setNewName("");
+      setNewTarget("");
+      setErrorMsg("");
+      setCreatedData(data);
+    },
+    onError: (err: any) => setErrorMsg(err.message || "Failed to create endpoint"),
+  });
+
+  const handleCopyKey = async () => {
+    if (!createdData?.apiKey) return;
+    if (await copyToClipboard(createdData.apiKey)) toast.success("API key copied to clipboard");
+  };
+
+  const handleCopyProxyUrl = async () => {
+    if (!createdData?.proxyUrl) return;
+    if (await copyToClipboard(createdData.proxyUrl)) toast.success("Proxy URL copied to clipboard");
+  };
+
+  return (
+    <div>
+      <PageHeader
+        title="Endpoints"
+        description="Registered legacy APIs proxied through QuantumBridge"
+        actions={
+          <Button onClick={() => setShowModal(true)} variant="primary" size="sm">
+            <Plus size={15} className="mr-1.5" />
+            New endpoint
+          </Button>
+        }
+      />
+
+      {isLoading ? (
+        <div className="flex items-center gap-3 text-sm text-white/40">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-qb-cyan/30 border-t-qb-cyan" />
+          Loading endpoints…
+        </div>
+      ) : !endpoints || endpoints.length === 0 ? (
+        <Card className="p-16 text-center">
+          <Network className="mx-auto mb-4 text-white/20" size={32} />
+          <p className="mb-1 text-sm text-white/50">No endpoints registered yet</p>
+          <p className="mb-6 text-xs text-white/30">Register a legacy API to proxy it through QuantumBridge.</p>
+          <Button onClick={() => setShowModal(true)} variant="primary">
+            Register your first endpoint
+          </Button>
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {endpoints.map((ep) => (
+            <Card key={ep._id} variant="interactive" className="group p-6">
+              <div className="mb-4 flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-qb-cyan/20 bg-qb-cyan/5 text-qb-cyan">
+                    <Network size={18} />
+                  </div>
+                  <div>
+                    <div className="mb-1 text-lg font-bold text-white">{ep.name}</div>
+                    <div className="font-mono-qb text-xs text-white/45">
+                      proxy.quantumbridge.io/{ep.proxySlug}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                      ep.isActive
+                        ? "bg-qb-emerald/10 text-qb-emerald border-qb-emerald/20"
+                        : "bg-qb-amber/10 text-qb-amber border-qb-amber/20",
+                    )}
+                  >
+                    {ep.isActive ? "Active" : "Inactive"}
+                  </span>
+                  <span className="hidden text-xs text-white/40 sm:inline">{ep.requestCount} req</span>
+                  <Link
+                    to={`/org/${orgId}/endpoints/${ep._id}`}
+                    className="flex items-center gap-1 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/60 transition-colors hover:border-qb-cyan/30 hover:text-qb-cyan"
+                  >
+                    Details <ArrowRight size={12} />
+                  </Link>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-white/45">
+                <span>Target: <span className="text-white/75 font-mono-qb">{ep.targetUrl}</span></span>
+                <span>IP restriction: <span className="text-white/75">{ep.ipAllowlist?.length ? `${ep.ipAllowlist.length} IPs` : "None"}</span></span>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Create endpoint modal */}
+      <Modal
+        open={showModal}
+        onOpenChange={(o) => {
+          setShowModal(o);
+          if (!o) {
+            setNewName("");
+            setNewTarget("");
+            setErrorMsg("");
+          }
+        }}
+        title="Register new endpoint"
+        description="QuantumBridge will proxy traffic to your legacy API."
+        footer={
+          <>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form="create-endpoint-form" variant="primary" size="sm" disabled={createMut.isPending}>
+              {createMut.isPending ? "Creating…" : "Create"}
+            </Button>
+          </>
+        }
+      >
+        {errorMsg && (
+          <div className="mb-4 rounded-lg border border-qb-rose/20 bg-qb-rose/5 p-3 text-sm text-qb-rose">{errorMsg}</div>
+        )}
+        <form id="create-endpoint-form" onSubmit={(e) => { e.preventDefault(); createMut.mutate(); }} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-xs text-white/60">Name / Identifier</label>
+            <input
+              type="text"
+              required
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="qb-input-focus w-full rounded-xl border border-white/10 bg-black/40 p-2.5 text-sm text-white placeholder-white/20"
+              placeholder="e.g. core-api-v2"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-xs text-white/60">Target URL</label>
+            <input
+              type="url"
+              required
+              value={newTarget}
+              onChange={(e) => setNewTarget(e.target.value)}
+              className="qb-input-focus w-full rounded-xl border border-white/10 bg-black/40 p-2.5 text-sm text-white placeholder-white/20"
+              placeholder="https://internal.yourdomain.com/api"
+            />
+          </div>
+        </form>
+      </Modal>
+
+      {/* Created credentials — shown once */}
+      <Modal
+        open={!!createdData}
+        onOpenChange={(o) => !o && setCreatedData(null)}
+        title="Endpoint Created!"
+        description="Save these credentials now — the API key cannot be retrieved later."
+        footer={
+          <Button type="button" variant="primary" size="sm" className="w-full" onClick={() => setCreatedData(null)}>
+            I've saved my credentials
+          </Button>
+        }
+      >
+        {createdData && (
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-xs text-white/60">Proxy URL</label>
+              <div className="flex gap-2">
+                <code className="flex-1 truncate rounded-lg border border-white/10 bg-black/40 p-2 font-mono-qb text-xs text-qb-cyan">
+                  {createdData.proxyUrl}
+                </code>
+                <Button variant="secondary" size="sm" onClick={handleCopyProxyUrl}>Copy</Button>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs text-white/60">API Key</label>
+              <div className="flex gap-2">
+                <code className="flex-1 select-all break-all rounded-lg border border-qb-cyan/20 bg-black/40 p-2 font-mono-qb text-[10px] text-white/80">
+                  {createdData.apiKey}
+                </code>
+                <Button variant="secondary" size="sm" onClick={handleCopyKey}>Copy</Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}

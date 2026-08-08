@@ -5,3 +5,19 @@ dist
 .DS_Store
 *.log
 coverage
+
+# Archive folder (internal notes/docs, not part of the project)
+_archive/
+
+# Build artefacts
+*.tsbuildinfo
+
+# Kiro/agent internal files
+.kiro/
+.kluster/
+.codebase-memory/
+.agent/
+.claude/
+
+# Editor
+.vscode/

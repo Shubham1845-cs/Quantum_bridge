@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { validateBody } from '../../middleware/validateBody.js';
+import logger from '../../utils/logger.js';
+import * as OrgService from '../organization/orgService.js';
 import {
   register,
   verifyEmail,
@@ -47,6 +49,18 @@ function handleError(err: unknown, res: Response): void {
 router.post('/register', validateBody(registerSchema), async (req: Request, res: Response) => {
   try {
     const { userId } = await register(req.body.email, req.body.password);
+
+    // Auto-create a default organization so the dashboard works immediately.
+    // Use the email prefix as the org name (e.g. "john" from "john@example.com").
+    try {
+      const emailPrefix = (req.body.email as string).split('@')[0];
+      const orgName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1) + "'s Org";
+      await OrgService.create(userId, orgName);
+    } catch (orgErr) {
+      // Non-fatal: if org creation fails (e.g. duplicate), user can create one manually
+      logger.warn('auto_org_creation_failed', { userId, error: orgErr });
+    }
+
     res.status(201).json({ userId });
   } catch (err) {
     handleError(err, res);

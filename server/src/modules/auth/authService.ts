@@ -128,21 +128,36 @@ function verificationExpiresAt(): Date {
 }
 
 async function sendVerificationEmail(email: string, token: string): Promise<void> {
-  const verifyUrl = `${env.ALLOWED_ORIGIN}/auth/verify-email?token=${token}`;
+  // In development, log the verification URL instead of sending a real email
+  if (env.NODE_ENV === 'development') {
+    const verifyUrl = `http://localhost:5173/verify-email?token=${token}`;
+    logger.info('verification_email_dev_mode', { email, verifyUrl });
+    console.log(`\n📧 [DEV] Verification URL for ${email}:\n   ${verifyUrl}\n`);
+    return;
+  }
 
-  await resend.emails.send({
-    from: 'QuantumBridge <noreply@quantumbridge.io>',
+  const verifyUrl = `${env.ALLOWED_ORIGIN}/verify-email?token=${token}`;
+
+  const result = await resend.emails.send({
+    from: 'QuantumBridge <onboarding@resend.dev>',
     to: email,
     subject: 'Verify your QuantumBridge account',
     html: `
-      <p>Welcome to QuantumBridge!</p>
-      <p>Click the link below to verify your email address. This link expires in 24 hours.</p>
-      <p><a href="${verifyUrl}">Verify Email</a></p>
-      <p>If you did not create an account, you can safely ignore this email.</p>
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0a0e17;color:#e2e8f0;border-radius:12px;border:1px solid rgba(0,217,217,0.15)">
+        <h2 style="margin:0 0 8px;color:#00d9d9;font-size:20px;">Verify your email</h2>
+        <p style="margin:0 0 24px;color:#8b95a7;font-size:14px;">Welcome to QuantumBridge! Click the button below to verify your email address. This link expires in 24 hours.</p>
+        <a href="${verifyUrl}" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#00d9d9,#8b5cf6);color:#000;font-weight:700;font-size:14px;text-decoration:none;border-radius:8px;letter-spacing:0.05em">Verify Email</a>
+        <p style="margin:24px 0 0;color:#4a5568;font-size:12px;">If you did not create an account, you can safely ignore this email.</p>
+      </div>
     `,
   });
 
-  logger.info('verification_email_sent', { email });
+  if (result.error) {
+    logger.error('resend_api_error', { email, error: result.error });
+    throw new Error(`Email delivery failed: ${result.error.message}`);
+  }
+
+  logger.info('verification_email_sent', { email, messageId: result.data?.id });
 }
 
 // ---------------------------------------------------------------------------
@@ -165,24 +180,33 @@ export async function register(
   // Hash password with argon2id (default algorithm for the argon2 package)
   const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
 
-  const verificationToken = generateVerificationToken();
-  const verificationTokenExpiresAt = verificationExpiresAt();
+  // In development mode: auto-verify accounts so devs can log in immediately
+  // without needing real email delivery.
+  const isDev = env.NODE_ENV === 'development';
+
+  const verificationToken = isDev ? undefined : generateVerificationToken();
+  const verificationTokenExpiresAt = isDev ? undefined : verificationExpiresAt();
 
   try {
     const user = await User.create({
       email: normalizedEmail,
       passwordHash,
-      isVerified: false,
+      isVerified: isDev,   // auto-verified in dev
       verificationToken,
       verificationTokenExpiresAt,
     });
 
-    // Send email after successful DB write; if email fails we still have the user
-    // and they can use resendVerification.
-    try {
-      await sendVerificationEmail(normalizedEmail, verificationToken);
-    } catch (emailErr) {
-      logger.error('verification_email_failed', { email: normalizedEmail, error: emailErr });
+    if (!isDev) {
+      // Send email after successful DB write; if email fails we still have the user
+      // and they can use resendVerification.
+      try {
+        await sendVerificationEmail(normalizedEmail, verificationToken!);
+      } catch (emailErr) {
+        logger.error('verification_email_failed', { email: normalizedEmail, error: emailErr });
+      }
+    } else {
+      logger.info('user_registered_dev_auto_verified', { userId: user._id.toString(), email: normalizedEmail });
+      console.log(`\n✅ [DEV] Account auto-verified — you can log in immediately at http://localhost:5173/login\n`);
     }
 
     logger.info('user_registered', { userId: user._id.toString() });

@@ -16,9 +16,7 @@
     "baseUrl": ".",
     "paths": {
       "@server/*": ["server/src/*"],
-      "@shared/*": ["shared/*"],
-      "@dashboard/*": ["apps/dashboard/src/*"],
-      "@web/*": ["apps/web/src/*"]
+      "@shared/*": ["shared/*"]
     }
   },
   "exclude": ["node_modules", "dist", "**/dist"]

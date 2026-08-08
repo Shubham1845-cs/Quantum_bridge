@@ -14,6 +14,7 @@ import { verifyRouter } from './modules/analytics/verifyRouter.js';
 import { billingRouter } from './modules/billing/billingRouter.js';
 import { handleWebhookEvent } from './modules/billing/webhookHandler.js';
 import { webhookRouter } from './modules/webhook/webhookRouter.js';
+import { newsRouter } from './modules/news/newsRouter.js';
 import { setupGracefulShutdown } from './utils/gracefulShutdown.js';
 import { connectWithRetry } from './config/database.js';
 import { keyVaultService } from './modules/keyVault/keyVaultService.js';
@@ -118,6 +119,10 @@ app.use('/orgs/:orgId/billing', billingRouter);
 
 // Webhooks — registration, delivery log (Req 9.1, 9.5)
 app.use('/orgs/:orgId/webhooks', webhookRouter);
+
+// News — public MediaStack proxy (key stays server-side; cached in Redis).
+// Frontend calls /api/news → vite proxy strips /api → this /news route.
+app.use('/news', newsRouter);
 
 export { app };
 export default app;

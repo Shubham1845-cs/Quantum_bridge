@@ -14,6 +14,8 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().min(1, 'RESEND_API_KEY is required'),
   SENTRY_DSN: z.string().url('SENTRY_DSN must be a valid URL'),
   PBKDF2_GLOBAL_PEPPER: z.string().min(32, 'PBKDF2_GLOBAL_PEPPER must be at least 32 characters'),
+  // MediaStack Live News API key — optional. When absent, /news degrades to [].
+  MEDIASTACK_API_KEY: z.string().default(''),
 });
 
 function parseEnv() {
