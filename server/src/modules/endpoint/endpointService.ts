@@ -12,7 +12,7 @@ import { hashApiKey } from './apiKey.js';
 // Plan limits (Req 5.2, 8.1)
 // ---------------------------------------------------------------------------
 const PLAN_LIMITS: Record<string, number> = {
-  free: 1,
+  free: 3,
   pro: 10,
   enterprise: Infinity,
 };
