@@ -26,6 +26,13 @@ const app = express();
 app.use(helmet());
 
 // Req 10.2 — Restrict CORS to ALLOWED_ORIGIN; reject other origins with 403
+const allowedOrigins = [
+  env.ALLOWED_ORIGIN,
+  // Accept both www and non-www variants of the same domain
+  env.ALLOWED_ORIGIN.replace('https://www.', 'https://'),
+  env.ALLOWED_ORIGIN.replace('https://', 'https://www.'),
+].filter(Boolean);
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -34,7 +41,7 @@ app.use(
         if (env.NODE_ENV !== 'production') return callback(null, true);
         return callback(Object.assign(new Error('Forbidden'), { status: 403 }));
       }
-      if (origin === env.ALLOWED_ORIGIN) {
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
       return callback(Object.assign(new Error('Forbidden'), { status: 403 }));
